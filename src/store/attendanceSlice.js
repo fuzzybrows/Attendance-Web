@@ -6,13 +6,21 @@ const API_BASE = '';
 
 export const fetchAttendance = createAsyncThunk('attendance/fetchAttendance', async (sessionId) => {
     const response = await axios.get(`${API_BASE}/attendance/session/${sessionId}`);
-    console.log('fetchAttendance response:', response.data);
     return response.data;
 });
 
+export const fetchMemberHistory = createAsyncThunk('attendance/fetchMemberHistory', async (memberId) => {
+    const response = await axios.get(`${API_BASE}/attendance/member/${memberId}`);
+    return response.data;
+});
+
+import { getDeviceId } from '../utils/device';
+
 export const submitAttendance = createAsyncThunk('attendance/submitAttendance', async (data) => {
     logger.info('Submitting attendance', { type: 'attendance_submit_attempt', member_id: data.member_id, session_id: data.session_id });
-    const response = await axios.post(`${API_BASE}/attendance/`, data);
+    const deviceId = await getDeviceId();
+    const payload = { ...data, device_id: deviceId };
+    const response = await axios.post(`${API_BASE}/attendance/`, payload);
     logger.info('Attendance submitted', { type: 'attendance_submit_success', attendance_id: response.data.id });
     return response.data;
 });
@@ -31,7 +39,7 @@ export const bulkDeleteAttendance = createAsyncThunk('attendance/bulkDeleteAtten
 
 const attendanceSlice = createSlice({
     name: 'attendance',
-    initialState: { items: [], status: 'idle' },
+    initialState: { items: [], memberHistory: [], status: 'idle' },
     extraReducers: (builder) => {
         builder
             .addCase(fetchAttendance.fulfilled, (state, action) => {
@@ -46,6 +54,9 @@ const attendanceSlice = createSlice({
             .addCase(bulkDeleteAttendance.fulfilled, (state, action) => {
                 const deletedIds = new Set(action.payload);
                 state.items = state.items.filter(a => !deletedIds.has(a.id));
+            })
+            .addCase(fetchMemberHistory.fulfilled, (state, action) => {
+                state.memberHistory = action.payload;
             });
     },
 });

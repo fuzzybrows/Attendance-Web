@@ -58,7 +58,7 @@ const Statistics = () => {
                 {/* Promptness Ranking */}
                 <div className="glass-card">
                     <h2>Promptness Ranking</h2>
-                    <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    <div className="table-responsive" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                         <table>
                             <thead>
                                 <tr>

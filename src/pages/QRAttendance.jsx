@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
+import { getDeviceId } from '../utils/device';
 
 function QRAttendance() {
     const [searchParams] = useSearchParams();
@@ -23,17 +24,45 @@ function QRAttendance() {
         }
 
         if (!authToken) {
-            setStatus('login_required');
-            setMessage('Please log in first, then scan the QR code again.');
+            const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+            navigate(`/login?redirect=${returnUrl}`);
             return;
         }
+
 
         // Mark attendance
         const markAttendance = async () => {
             try {
+                // 1. Get Device ID
+                const deviceId = await getDeviceId();
+
+                // 2. Get Location (Best Effort)
+                let latitude = null;
+                let longitude = null;
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 5000,
+                            maximumAge: 0
+                        });
+                    });
+                    latitude = position.coords.latitude;
+                    longitude = position.coords.longitude;
+                } catch (locErr) {
+                    console.warn("Location access denied/failed", locErr);
+                    // Proceed without location, backend might reject if radius is enforced
+                }
+
+                const payload = {
+                    device_id: deviceId,
+                    latitude: latitude,
+                    longitude: longitude
+                };
+
                 const response = await axios.post(
                     `/attendance/qr/mark?session_id=${sessionId}&qr_token=${qrToken}`,
-                    {},
+                    payload,
                     { headers: { Authorization: `Bearer ${authToken}` } }
                 );
                 setStatus('success');
@@ -43,6 +72,9 @@ function QRAttendance() {
                 setStatus('error');
                 if (err.response?.status === 409) {
                     setMessage('Your attendance has already been recorded for this session.');
+                } else if (err.response?.status === 403) {
+                    // Fraud prevention error (Device Lock or Geofence)
+                    setMessage(err.response.data.detail || 'Attendance blocked by security rules.');
                 } else if (err.response?.status === 401) {
                     setMessage(err.response.data.detail || 'QR code has expired. Please scan again.');
                 } else {

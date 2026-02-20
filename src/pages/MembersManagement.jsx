@@ -117,7 +117,7 @@ function MembersManagement() {
 
     return (
         <div className="glass-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div className="flex-between" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <h1 style={{ margin: 0 }}>Member Management</h1>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <input
@@ -139,7 +139,7 @@ function MembersManagement() {
                 </div>
             </div>
 
-            <div style={{ overflowX: 'auto' }}>
+            <div className="table-responsive">
                 <table>
                     <thead>
                         <tr>

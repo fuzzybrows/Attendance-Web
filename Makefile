@@ -2,7 +2,7 @@
 
 SHELL := /bin/bash
 
-.PHONY: install dev build run preview lint
+.PHONY: install dev build run preview lint test coverage
 
 # Install dependencies
 install:
@@ -27,3 +27,11 @@ preview:
 # Lint code
 lint:
 	npm run lint
+
+# Run tests
+test:
+	npm test
+
+# Run tests with coverage
+coverage:
+	npm run coverage

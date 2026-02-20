@@ -117,10 +117,9 @@ function Sessions() {
                     </span>
                 </div>
                 {items.map(s => (
-                    <div key={s.id} className="glass-card" style={{
-                        padding: '1rem', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        border: selected.has(s.id) ? '1px solid rgba(129, 140, 248, 0.4)' : `1px solid ${sc.border}`,
-                        cursor: 'pointer', transition: 'all 0.2s ease'
+                    <div key={s.id} className={`glass-card session-card ${selected.has(s.id) ? 'selected' : ''}`} style={{
+                        border: selected.has(s.id) ? undefined : `1px solid ${sc.border}`,
+                        transition: 'all 0.2s ease'
                     }}
                         onClick={() => handleViewAttendance(s)}
                     >
@@ -175,7 +174,7 @@ function Sessions() {
     return (
         <>
             <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div className="flex-between" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h2 style={{ margin: 0 }}>All Sessions</h2>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                         {selected.size > 0 && (

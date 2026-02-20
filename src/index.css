@@ -9,6 +9,52 @@
   --error-color: #ef4444;
 }
 
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.session-card {
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid transparent;
+  /* default */
+}
+
+.session-card.selected {
+  border-color: rgba(129, 140, 248, 0.4);
+}
+
+@media (max-width: 600px) {
+  .flex-between {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .session-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .session-card>div {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -65,6 +111,33 @@ h2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1.5rem;
+}
+
+.mobile-menu-btn {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .desktop-menu {
+    display: none !important;
+  }
+
+  .mobile-menu-btn {
+    display: block !important;
+  }
+
+  .container {
+    padding: 0 1rem;
+    width: 95%;
+  }
+
+  .glass-card {
+    padding: 1.25rem;
+  }
 }
 
 table {

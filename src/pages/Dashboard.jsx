@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchMembers, addMember } from '../store/membersSlice';
 import { fetchSessions, addSession, setCurrentSession, deleteSession, bulkDeleteSessions } from '../store/sessionsSlice';
-import { fetchAttendance, submitAttendance, deleteAttendance, bulkDeleteAttendance } from '../store/attendanceSlice';
+import { fetchAttendance, fetchMemberHistory, submitAttendance, deleteAttendance, bulkDeleteAttendance } from '../store/attendanceSlice';
 import Modal from '../components/Modal';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -15,7 +15,7 @@ function Dashboard() {
     const dispatch = useDispatch();
     const { items: members } = useSelector(state => state.members);
     const { items: sessions, currentSession } = useSelector(state => state.sessions);
-    const { items: attendance } = useSelector(state => state.attendance);
+    const { items: attendance, memberHistory } = useSelector(state => state.attendance);
     const { user } = useSelector(state => state.auth);
 
     const isAdmin = user?.permissions?.includes('admin');
@@ -190,15 +190,19 @@ function Dashboard() {
     }, [qrActive, currentSession, isAdmin, fetchQrToken]);
 
     useEffect(() => {
-        dispatch(fetchMembers());
-        dispatch(fetchSessions());
-    }, [dispatch]);
+        if (isAdmin) {
+            dispatch(fetchMembers());
+            dispatch(fetchSessions());
+        } else if (user) {
+            dispatch(fetchMemberHistory(user.id));
+        }
+    }, [dispatch, isAdmin, user]);
 
     useEffect(() => {
-        if (currentSession) {
+        if (currentSession && isAdmin) {
             dispatch(fetchAttendance(currentSession.id));
         }
-    }, [currentSession, dispatch]);
+    }, [currentSession, dispatch, isAdmin]);
 
     const handleAddMember = () => {
         dispatch(addMember({
@@ -309,55 +313,53 @@ function Dashboard() {
     return (
         <>
             <div className="grid">
-                <div className="glass-card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h2>Active Sessions</h2>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            {isAdmin && selectedSessions.size > 0 && (
-                                <button
-                                    className="btn"
-                                    style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                                    onClick={() => requestBulkDelete('session')}
-                                >
-                                    🗑️ Delete {selectedSessions.size} selected
-                                </button>
-                            )}
-                            {isAdmin && (
+                {isAdmin && (
+                    <div className="glass-card">
+                        <div className="flex-between" style={{ marginBottom: '1rem' }}>
+                            <h2>Active Sessions</h2>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                {selectedSessions.size > 0 && (
+                                    <button
+                                        className="btn"
+                                        style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                                        onClick={() => requestBulkDelete('session')}
+                                    >
+                                        🗑️ Delete {selectedSessions.size} selected
+                                    </button>
+                                )}
                                 <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => navigate('/sessions')}>
                                     View All Sessions →
                                 </button>
-                            )}
+                            </div>
                         </div>
-                    </div>
-                    {(() => {
-                        const activeSessions = sessions.filter(s => s.status === 'active' || !s.status);
-                        if (activeSessions.length === 0) {
-                            return <p style={{ color: 'var(--text-secondary)' }}>No active sessions.</p>;
-                        }
-                        return (
-                            <>
-                                {isAdmin && activeSessions.length > 0 && (
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={activeSessions.length > 0 && selectedSessions.size === activeSessions.length}
-                                            onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    setSelectedSessions(new Set(activeSessions.map(s => s.id)));
-                                                } else {
-                                                    setSelectedSessions(new Set());
-                                                }
-                                            }}
-                                            style={{ accentColor: '#818cf8' }}
-                                        />
-                                        Select All
-                                    </label>
-                                )}
-                                <div id="sessions-list" style={{ maxHeight: '140px', overflowY: 'auto', position: 'relative' }}>
-                                    {activeSessions.map(s => (
-                                        <div key={s.id} className="glass-card" style={{ padding: '1rem', marginBottom: '0.5rem', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: selectedSessions.has(s.id) ? '1px solid rgba(129, 140, 248, 0.4)' : undefined }} onClick={() => dispatch(setCurrentSession(s))}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                {isAdmin && (
+                        {(() => {
+                            const activeSessions = sessions.filter(s => s.status === 'active' || !s.status);
+                            if (activeSessions.length === 0) {
+                                return <p style={{ color: 'var(--text-secondary)' }}>No active sessions.</p>;
+                            }
+                            return (
+                                <>
+                                    {activeSessions.length > 0 && (
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={activeSessions.length > 0 && selectedSessions.size === activeSessions.length}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedSessions(new Set(activeSessions.map(s => s.id)));
+                                                    } else {
+                                                        setSelectedSessions(new Set());
+                                                    }
+                                                }}
+                                                style={{ accentColor: '#818cf8' }}
+                                            />
+                                            Select All
+                                        </label>
+                                    )}
+                                    <div id="sessions-list" style={{ maxHeight: '140px', overflowY: 'auto', position: 'relative' }}>
+                                        {activeSessions.map(s => (
+                                            <div key={s.id} className={`glass-card session-card ${selectedSessions.has(s.id) ? 'selected' : ''}`} onClick={() => dispatch(setCurrentSession(s))}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={selectedSessions.has(s.id)}
@@ -371,15 +373,13 @@ function Dashboard() {
                                                         onClick={(e) => e.stopPropagation()}
                                                         style={{ accentColor: '#818cf8' }}
                                                     />
-                                                )}
-                                                <div>
-                                                    <strong>{s.title}</strong><br />
-                                                    <small>{new Date(s.start_time).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</small>
+                                                    <div>
+                                                        <strong>{s.title}</strong><br />
+                                                        <small>{new Date(s.start_time).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</small>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <span className={`status-badge ${s.type === 'rehearsal' ? 'status-nfc' : 'status-manual'}`}>{s.type}</span>
-                                                {isAdmin && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <span className={`status-badge ${s.type === 'rehearsal' ? 'status-nfc' : 'status-manual'}`}>{s.type}</span>
                                                     <button
                                                         className="btn"
                                                         style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
@@ -387,281 +387,315 @@ function Dashboard() {
                                                     >
                                                         🗑️ Delete
                                                     </button>
-                                                )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                {activeSessions.length > 1 && (
-                                    <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem', animation: 'pulse 2s ease-in-out infinite' }}>
-                                        ↕ Scroll to see more active sessions
-                                    </p>
-                                )}
-                            </>
-                        );
-                    })()}
-                    {isAdmin && (
+                                        ))}
+                                    </div>
+                                    {activeSessions.length > 1 && (
+                                        <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem', animation: 'pulse 2s ease-in-out infinite' }}>
+                                            ↕ Scroll to see more active sessions
+                                        </p>
+                                    )}
+                                </>
+                            );
+                        })()}
                         <button className="btn" style={{ marginTop: '0.75rem' }} onClick={() => setSessionModalOpen(true)}>+ New Session</button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             <div className="glass-card">
-                <h2>{currentSession ? `Attendance: ${currentSession.title}` : 'Attendance Records'}</h2>
-                {!currentSession ? (
-                    <p>Select a session to view attendance.</p>
-                ) : (
-                    <div>
-                        {/* QR Code Section */}
-                        {isAdmin && (
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                padding: '1.5rem',
-                                marginBottom: '1.5rem',
-                                borderRadius: '12px',
-                                background: qrActive ? 'rgba(74, 222, 128, 0.08)' : 'rgba(255,255,255,0.03)',
-                                border: qrActive ? '1px solid rgba(74, 222, 128, 0.2)' : '1px solid rgba(255,255,255,0.1)',
-                                transition: 'all 0.3s ease'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%', justifyContent: 'space-between', marginBottom: qrActive ? '1rem' : 0 }}>
-                                    <div>
-                                        <h3 style={{ margin: 0 }}>📱 QR Attendance</h3>
-                                        <small style={{ color: 'var(--text-secondary)' }}>
-                                            {qrActive ? 'Members can scan this code to mark attendance' : 'Enable to show QR code for members'}
-                                        </small>
-                                    </div>
-                                    <button
-                                        className="btn"
-                                        style={{
-                                            background: qrActive ? 'rgba(255,50,50,0.2)' : 'rgba(74,222,128,0.2)',
-                                            border: qrActive ? '1px solid rgba(255,50,50,0.4)' : '1px solid rgba(74,222,128,0.4)',
-                                            color: qrActive ? '#ff6b6b' : '#4ade80',
-                                            padding: '0.4rem 1rem',
-                                            fontSize: '0.85rem'
-                                        }}
-                                        onClick={() => setQrActive(!qrActive)}
-                                    >
-                                        {qrActive ? '⏹ Stop' : '▶ Start'}
-                                    </button>
-                                </div>
-
-                                {qrActive && qrUrl && (
-                                    <>
-                                        <div style={{
-                                            background: '#ffffff',
-                                            padding: '16px',
-                                            borderRadius: '12px',
-                                            display: 'inline-block',
-                                            boxShadow: '0 4px 24px rgba(0,0,0,0.3)'
-                                        }}>
-                                            <QRCodeSVG
-                                                value={qrUrl}
-                                                size={220}
-                                                level="M"
-                                                includeMargin={false}
-                                            />
+                {isAdmin ? (
+                    <>
+                        <h2>{currentSession ? `Attendance: ${currentSession.title}` : 'Attendance Records'}</h2>
+                        {!currentSession ? (
+                            <p>Select a session to view attendance.</p>
+                        ) : (
+                            <div>
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    padding: '1.5rem',
+                                    marginBottom: '1.5rem',
+                                    borderRadius: '12px',
+                                    background: qrActive ? 'rgba(74, 222, 128, 0.08)' : 'rgba(255,255,255,0.03)',
+                                    border: qrActive ? '1px solid rgba(74, 222, 128, 0.2)' : '1px solid rgba(255,255,255,0.1)',
+                                    transition: 'all 0.3s ease'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%', justifyContent: 'space-between', marginBottom: qrActive ? '1rem' : 0 }}>
+                                        <div>
+                                            <h3 style={{ margin: 0 }}>📱 QR Attendance</h3>
+                                            <small style={{ color: 'var(--text-secondary)' }}>
+                                                {qrActive ? 'Members can scan this code to mark attendance' : 'Enable to show QR code for members'}
+                                            </small>
                                         </div>
-                                        <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
-                                            <div style={{
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                padding: '0.3rem 0.8rem',
-                                                borderRadius: '20px',
-                                                background: 'rgba(255,255,255,0.05)',
-                                                fontSize: '0.85rem'
-                                            }}>
-                                                🔄 Refreshes in <strong style={{ color: qrCountdown <= 5 ? '#ff6b6b' : '#4ade80' }}>{qrCountdown}s</strong>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        )}
-
-                        {!isAdmin && (
-                            <div style={{
-                                textAlign: 'center',
-                                padding: '1.5rem',
-                                marginBottom: '1.5rem',
-                                borderRadius: '12px',
-                                background: scannerActive ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.08)',
-                                border: '1px solid rgba(99, 102, 241, 0.2)',
-                                transition: 'all 0.3s ease'
-                            }}>
-                                {!scannerActive ? (
-                                    <>
-                                        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📷</div>
-                                        <p style={{ margin: '0 0 1rem 0' }}>Scan the QR code displayed by your admin to mark your attendance.</p>
                                         <button
                                             className="btn"
                                             style={{
-                                                background: 'rgba(99, 102, 241, 0.2)',
-                                                border: '1px solid rgba(99, 102, 241, 0.4)',
-                                                color: '#818cf8',
-                                                padding: '0.6rem 1.5rem',
-                                                fontSize: '0.95rem',
-                                                cursor: 'pointer'
+                                                background: qrActive ? 'rgba(255,50,50,0.2)' : 'rgba(74,222,128,0.2)',
+                                                border: qrActive ? '1px solid rgba(255,50,50,0.4)' : '1px solid rgba(74,222,128,0.4)',
+                                                color: qrActive ? '#ff6b6b' : '#4ade80',
+                                                padding: '0.4rem 1rem',
+                                                fontSize: '0.85rem'
                                             }}
-                                            onClick={() => {
-                                                setScannerActive(true);
-                                                setScannerStatus('starting');
-                                                setScannerMessage('Requesting camera access...');
-                                            }}
+                                            onClick={() => setQrActive(!qrActive)}
                                         >
-                                            📱 Open Scanner
+                                            {qrActive ? '⏹ Stop' : '▶ Start'}
                                         </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div
-                                            id="qr-scanner-region"
-                                            style={{
-                                                width: '100%',
-                                                maxWidth: '400px',
-                                                margin: '0 auto',
+                                    </div>
+
+                                    {qrActive && qrUrl && (
+                                        <>
+                                            <div style={{
+                                                background: '#ffffff',
+                                                padding: '16px',
                                                 borderRadius: '12px',
-                                                overflow: 'hidden',
-                                                minHeight: scannerStatus === 'scanning' ? '300px' : '50px'
-                                            }}
-                                        />
-                                        <p style={{
-                                            marginTop: '0.75rem',
-                                            marginBottom: '0.5rem',
-                                            color: scannerStatus === 'success' ? '#4ade80'
-                                                : scannerStatus === 'error' ? '#ff6b6b'
-                                                    : 'var(--text-secondary)',
-                                            fontSize: '0.9rem'
-                                        }}>
-                                            {scannerStatus === 'starting' && '⏳ '}
-                                            {scannerStatus === 'scanning' && '🔍 '}
-                                            {scannerStatus === 'success' && '✅ '}
-                                            {scannerStatus === 'error' && '❌ '}
-                                            {scannerMessage}
-                                        </p>
-                                        {scannerStatus !== 'success' && (
-                                            <button
-                                                className="btn"
-                                                style={{
-                                                    background: 'rgba(255,50,50,0.2)',
-                                                    border: '1px solid rgba(255,50,50,0.4)',
-                                                    color: '#ff6b6b',
-                                                    padding: '0.4rem 1rem',
+                                                display: 'inline-block',
+                                                boxShadow: '0 4px 24px rgba(0,0,0,0.3)'
+                                            }}>
+                                                <QRCodeSVG
+                                                    value={qrUrl}
+                                                    size={220}
+                                                    level="M"
+                                                    includeMargin={false}
+                                                />
+                                            </div>
+                                            <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
+                                                <div style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.5rem',
+                                                    padding: '0.3rem 0.8rem',
+                                                    borderRadius: '20px',
+                                                    background: 'rgba(255,255,255,0.05)',
                                                     fontSize: '0.85rem'
-                                                }}
-                                                onClick={() => {
-                                                    if (scannerRef.current) {
-                                                        scannerRef.current.stop().catch(() => { });
-                                                        scannerRef.current = null;
-                                                    }
-                                                    setScannerActive(false);
-                                                    setScannerStatus('');
-                                                    setScannerMessage('');
-                                                }}
-                                            >
-                                                Close Scanner
-                                            </button>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        )}
-                        <table>
-                            <thead>
-                                <tr>
-                                    {isAdmin && (
-                                        <th style={{ width: '30px' }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={Array.isArray(attendance) && attendance.length > 0 && selectedAttendance.size === attendance.length}
-                                                onChange={(e) => {
-                                                    if (e.target.checked && Array.isArray(attendance)) {
-                                                        setSelectedAttendance(new Set(attendance.map(a => a.id)));
-                                                    } else {
-                                                        setSelectedAttendance(new Set());
-                                                    }
-                                                }}
-                                                style={{ accentColor: '#818cf8' }}
-                                            />
-                                        </th>
+                                                }}>
+                                                    🔄 Refreshes in <strong style={{ color: qrCountdown <= 5 ? '#ff6b6b' : '#4ade80' }}>{qrCountdown}s</strong>
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
-                                    <th>Member</th>
-                                    <th>Time</th>
-                                    <th>Type</th>
-                                    <th>Marked By</th>
-                                    <th>Location</th>
-                                    {isAdmin && <th>Action</th>}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {Array.isArray(attendance) ? attendance.map(a => {
-                                    const member = members.find(m => m.id === a.member_id);
-                                    const markedBy = members.find(m => m.id === a.marked_by_id);
-                                    const memberName = member ? `${member.first_name} ${member.last_name}` : 'Unknown';
-                                    return (
-                                        <tr key={a.id} style={{ background: selectedAttendance.has(a.id) ? 'rgba(129, 140, 248, 0.08)' : undefined }}>
-                                            {isAdmin && (
-                                                <td>
+                                </div>
+
+                                <div className="table-responsive">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th style={{ width: '30px' }}>
                                                     <input
                                                         type="checkbox"
-                                                        checked={selectedAttendance.has(a.id)}
+                                                        checked={Array.isArray(attendance) && attendance.length > 0 && selectedAttendance.size === attendance.length}
                                                         onChange={(e) => {
-                                                            const next = new Set(selectedAttendance);
-                                                            if (e.target.checked) next.add(a.id);
-                                                            else next.delete(a.id);
-                                                            setSelectedAttendance(next);
+                                                            if (e.target.checked && Array.isArray(attendance)) {
+                                                                setSelectedAttendance(new Set(attendance.map(a => a.id)));
+                                                            } else {
+                                                                setSelectedAttendance(new Set());
+                                                            }
                                                         }}
                                                         style={{ accentColor: '#818cf8' }}
                                                     />
-                                                </td>
+                                                </th>
+                                                <th>Member</th>
+                                                <th>Time</th>
+                                                <th>Type</th>
+                                                <th>Marked By</th>
+                                                <th>Location</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Array.isArray(attendance) ? attendance.map(a => {
+                                                const member = members.find(m => m.id === a.member_id);
+                                                const markedBy = members.find(m => m.id === a.marked_by_id);
+                                                const memberName = member ? `${member.first_name} ${member.last_name}` : 'Unknown';
+                                                return (
+                                                    <tr key={a.id} style={{ background: selectedAttendance.has(a.id) ? 'rgba(129, 140, 248, 0.08)' : undefined }}>
+                                                        <td>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedAttendance.has(a.id)}
+                                                                onChange={(e) => {
+                                                                    const next = new Set(selectedAttendance);
+                                                                    if (e.target.checked) next.add(a.id);
+                                                                    else next.delete(a.id);
+                                                                    setSelectedAttendance(next);
+                                                                }}
+                                                                style={{ accentColor: '#818cf8' }}
+                                                            />
+                                                        </td>
+                                                        <td>{memberName}</td>
+                                                        <td>{new Date(a.timestamp).toLocaleTimeString()}</td>
+                                                        <td><span className={`status-badge status-${a.submission_type}`}>{a.submission_type}</span></td>
+                                                        <td>{markedBy ? `${markedBy.first_name} ${markedBy.last_name}` : 'Self'}</td>
+                                                        <td>{a.latitude ? `${a.latitude.toFixed(4)}, ${a.longitude.toFixed(4)}` : 'N/A'}</td>
+                                                        <td>
+                                                            <button
+                                                                className="btn"
+                                                                style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                                                                onClick={() => requestDelete('attendance', a.id, memberName)}
+                                                            >
+                                                                🗑️ Remove
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }) : (
+                                                <tr><td colSpan="7">Error: Attendance data is not a list. Type: {typeof attendance}</td></tr>
                                             )}
-                                            <td>{memberName}</td>
-                                            <td>{new Date(a.timestamp).toLocaleTimeString()}</td>
-                                            <td><span className={`status-badge status-${a.submission_type}`}>{a.submission_type}</span></td>
-                                            <td>{markedBy ? `${markedBy.first_name} ${markedBy.last_name}` : 'Self'}</td>
-                                            <td>{a.latitude ? `${a.latitude.toFixed(4)}, ${a.longitude.toFixed(4)}` : 'N/A'}</td>
-                                            {isAdmin && (
-                                                <td>
-                                                    <button
-                                                        className="btn"
-                                                        style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                                                        onClick={() => requestDelete('attendance', a.id, memberName)}
-                                                    >
-                                                        🗑️ Remove
-                                                    </button>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    );
-                                }) : (
-                                    <tr><td colSpan="7">Error: Attendance data is not a list. Type: {typeof attendance}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {selectedAttendance.size > 0 && (
+                                    <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+                                        <button
+                                            className="btn"
+                                            style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                                            onClick={() => requestBulkDelete('attendance')}
+                                        >
+                                            🗑️ Delete {selectedAttendance.size} selected record{selectedAttendance.size > 1 ? 's' : ''}
+                                        </button>
+                                    </div>
                                 )}
-                            </tbody>
-                        </table>
-                        {isAdmin && selectedAttendance.size > 0 && (
-                            <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
-                                <button
-                                    className="btn"
-                                    style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                                    onClick={() => requestBulkDelete('attendance')}
-                                >
-                                    🗑️ Delete {selectedAttendance.size} selected record{selectedAttendance.size > 1 ? 's' : ''}
-                                </button>
+                                <div style={{ marginTop: '2rem' }}>
+                                    <h3>Mark Manual Attendance</h3>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        {members.filter(m => !attendance.some(a => a.member_id === m.id)).map(m => (
+                                            <button key={m.id} className="btn" style={{ background: 'rgba(255,255,255,0.1)' }} onClick={() => handleMarkAttendance(m.id)}>
+                                                {m.first_name} {m.last_name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         )}
-                        <div style={{ marginTop: '2rem' }}>
-                            <h3>Mark Manual Attendance</h3>
-                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                {members.filter(m => !attendance.some(a => a.member_id === m.id)).map(m => (
-                                    <button key={m.id} className="btn" style={{ background: 'rgba(255,255,255,0.1)' }} onClick={() => handleMarkAttendance(m.id)}>
-                                        {m.first_name} {m.last_name}
+                    </>
+                ) : (
+                    <>
+                        <div style={{
+                            textAlign: 'center',
+                            padding: '1.5rem',
+                            marginBottom: '1.5rem',
+                            borderRadius: '12px',
+                            background: scannerActive ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.08)',
+                            border: '1px solid rgba(99, 102, 241, 0.2)',
+                            transition: 'all 0.3s ease'
+                        }}>
+                            {!scannerActive ? (
+                                <>
+                                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📷</div>
+                                    <p style={{ margin: '0 0 1rem 0' }}>Scan the QR code displayed by your admin to mark your attendance.</p>
+                                    <button
+                                        className="btn"
+                                        style={{
+                                            background: 'rgba(99, 102, 241, 0.2)',
+                                            border: '1px solid rgba(99, 102, 241, 0.4)',
+                                            color: '#818cf8',
+                                            padding: '0.6rem 1.5rem',
+                                            fontSize: '0.95rem',
+                                            cursor: 'pointer'
+                                        }}
+                                        onClick={() => {
+                                            setScannerActive(true);
+                                            setScannerStatus('starting');
+                                            setScannerMessage('Requesting camera access...');
+                                        }}
+                                    >
+                                        📱 Open Scanner
                                     </button>
-                                ))}
-                            </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div
+                                        id="qr-scanner-region"
+                                        style={{
+                                            width: '100%',
+                                            maxWidth: '400px',
+                                            margin: '0 auto',
+                                            borderRadius: '12px',
+                                            overflow: 'hidden',
+                                            minHeight: scannerStatus === 'scanning' ? '300px' : '50px'
+                                        }}
+                                    />
+                                    <p style={{
+                                        marginTop: '0.75rem',
+                                        marginBottom: '0.5rem',
+                                        color: scannerStatus === 'success' ? '#4ade80'
+                                            : scannerStatus === 'error' ? '#ff6b6b'
+                                                : 'var(--text-secondary)',
+                                        fontSize: '0.9rem'
+                                    }}>
+                                        {scannerStatus === 'starting' && '⏳ '}
+                                        {scannerStatus === 'scanning' && '🔍 '}
+                                        {scannerStatus === 'success' && '✅ '}
+                                        {scannerStatus === 'error' && '❌ '}
+                                        {scannerMessage}
+                                    </p>
+                                    {scannerStatus !== 'success' && (
+                                        <button
+                                            className="btn"
+                                            style={{
+                                                background: 'rgba(255,50,50,0.2)',
+                                                border: '1px solid rgba(255,50,50,0.4)',
+                                                color: '#ff6b6b',
+                                                padding: '0.4rem 1rem',
+                                                fontSize: '0.85rem'
+                                            }}
+                                            onClick={() => {
+                                                if (scannerRef.current) {
+                                                    scannerRef.current.stop().catch(() => { });
+                                                    scannerRef.current = null;
+                                                }
+                                                setScannerActive(false);
+                                                setScannerStatus('');
+                                                setScannerMessage('');
+                                            }}
+                                        >
+                                            Close Scanner
+                                        </button>
+                                    )}
+                                </>
+                            )}
                         </div>
-                    </div>
+
+                        <h2>My Attendance History</h2>
+                        <div className="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Session</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Location</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {memberHistory && memberHistory.length > 0 ? (
+                                        memberHistory.map(h => (
+                                            <tr key={h.id}>
+                                                <td>{new Date(h.timestamp).toLocaleDateString()} {new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                                <td>{h.session?.title || 'Unknown Session'}</td>
+                                                <td>{h.session?.type || 'N/A'}</td>
+                                                <td>
+                                                    <span className={`status-badge status-${h.submission_type}`}>
+                                                        {h.submission_type}
+                                                    </span>
+                                                </td>
+                                                <td>{h.latitude ? '📍 Recorded' : 'N/A'}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="5" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                                No attendance records found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 )}
             </div>
 

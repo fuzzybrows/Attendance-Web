@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { login, clearError } from '../store/authSlice';
 
 function Login() {
     const [credentials, setCredentials] = useState({ login: '', password: '' });
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { token, loading, error, needsVerification } = useSelector(state => state.auth);
 
+    const redirectPath = searchParams.get('redirect');
+
     useEffect(() => {
-        if (token) navigate('/');
+        if (token) navigate(redirectPath || '/');
         if (needsVerification) navigate('/verify');
-    }, [token, needsVerification, navigate]);
+    }, [token, needsVerification, navigate, redirectPath]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
