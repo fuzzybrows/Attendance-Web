@@ -437,9 +437,17 @@ function Dashboard() {
                                                 border: qrActive ? '1px solid rgba(255,50,50,0.4)' : '1px solid rgba(74,222,128,0.4)',
                                                 color: qrActive ? '#ff6b6b' : '#4ade80',
                                                 padding: '0.4rem 1rem',
-                                                fontSize: '0.85rem'
+                                                fontSize: '0.85rem',
+                                                opacity: (currentSession.status || 'active') !== 'active' ? 0.5 : 1,
+                                                cursor: (currentSession.status || 'active') !== 'active' ? 'not-allowed' : 'pointer'
                                             }}
-                                            onClick={() => setQrActive(!qrActive)}
+                                            onClick={() => {
+                                                if ((currentSession.status || 'active') !== 'active') {
+                                                    alert("QR code attendance is disabled because this session is not active.");
+                                                    return;
+                                                }
+                                                setQrActive(!qrActive);
+                                            }}
                                         >
                                             {qrActive ? '⏹ Stop' : '▶ Start'}
                                         </button>
@@ -525,7 +533,9 @@ function Dashboard() {
                                                             />
                                                         </td>
                                                         <td>{memberName}</td>
-                                                        <td>{new Date(a.timestamp).toLocaleTimeString()}</td>
+                                                        <td>
+                                                            {new Date(a.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date(a.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                                                        </td>
                                                         <td><span className={`status-badge status-${a.submission_type}`}>{a.submission_type}</span></td>
                                                         <td>{markedBy ? `${markedBy.first_name} ${markedBy.last_name}` : 'Self'}</td>
                                                         <td>{a.latitude ? `${a.latitude.toFixed(4)}, ${a.longitude.toFixed(4)}` : 'N/A'}</td>
@@ -561,7 +571,22 @@ function Dashboard() {
                                     <h3>Mark Manual Attendance</h3>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                         {members.filter(m => !attendance.some(a => a.member_id === m.id)).map(m => (
-                                            <button key={m.id} className="btn" style={{ background: 'rgba(255,255,255,0.1)' }} onClick={() => handleMarkAttendance(m.id)}>
+                                            <button
+                                                key={m.id}
+                                                className="btn"
+                                                style={{
+                                                    background: 'rgba(255,255,255,0.1)',
+                                                    opacity: (currentSession.status || 'active') !== 'active' ? 0.5 : 1,
+                                                    cursor: (currentSession.status || 'active') !== 'active' ? 'not-allowed' : 'pointer'
+                                                }}
+                                                onClick={() => {
+                                                    if ((currentSession.status || 'active') !== 'active') {
+                                                        alert("Manual attendance is disabled because this session is not active.");
+                                                        return;
+                                                    }
+                                                    handleMarkAttendance(m.id);
+                                                }}
+                                            >
                                                 {m.first_name} {m.last_name}
                                             </button>
                                         ))}
@@ -674,7 +699,9 @@ function Dashboard() {
                                     {memberHistory && memberHistory.length > 0 ? (
                                         memberHistory.map(h => (
                                             <tr key={h.id}>
-                                                <td>{new Date(h.timestamp).toLocaleDateString()} {new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                                <td>
+                                                    {new Date(h.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date(h.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                                                </td>
                                                 <td>{h.session?.title || 'Unknown Session'}</td>
                                                 <td>{h.session?.type || 'N/A'}</td>
                                                 <td>
