@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { fetchSessions, deleteSession, bulkDeleteSessions, updateSessionStatus, setCurrentSession } from '../store/sessionsSlice';
+import { fetchSessions, deleteSession, bulkDeleteSessions, updateSessionStatus, setCurrentSession, updateSession } from '../store/sessionsSlice';
+import Modal from '../components/Modal';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import axios from 'axios';
 
 const statusColors = {
@@ -20,6 +23,11 @@ function Sessions() {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [selected, setSelected] = useState(new Set());
+
+    // View/Edit Modal State
+    const [viewSession, setViewSession] = useState(null);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editSessionData, setEditSessionData] = useState(null);
 
     // Delete state
     const [deleteTarget, setDeleteTarget] = useState(null);
@@ -102,6 +110,27 @@ function Sessions() {
         navigate('/');
     };
 
+    const handleViewSession = (session) => {
+        setViewSession(session);
+        setIsEditMode(false);
+        setEditSessionData({
+            ...session,
+            start_time: session.start_time ? new Date(session.start_time) : new Date()
+        });
+    };
+
+    const handleUpdateSession = () => {
+        const payload = {
+            title: editSessionData.title,
+            type: editSessionData.type,
+            status: editSessionData.status,
+            start_time: editSessionData.start_time.toISOString(),
+        };
+        dispatch(updateSession({ id: viewSession.id, data: payload }));
+        setIsEditMode(false);
+        setViewSession(null);
+    };
+
     const renderGroup = (title, items, statusKey) => {
         if (items.length === 0) return null;
         const sc = statusColors[statusKey];
@@ -121,7 +150,7 @@ function Sessions() {
                         border: selected.has(s.id) ? undefined : `1px solid ${sc.border}`,
                         transition: 'all 0.2s ease'
                     }}
-                        onClick={() => handleViewAttendance(s)}
+                        onClick={() => handleViewSession(s)}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <input
@@ -237,6 +266,74 @@ function Sessions() {
                     </>
                 )}
             </div>
+
+            {/* View/Edit Modal */}
+            {viewSession && (
+                <Modal
+                    title={isEditMode ? "Edit Session Details" : "Session Details"}
+                    isOpen={!!viewSession}
+                    onClose={() => {
+                        setViewSession(null);
+                        setIsEditMode(false);
+                    }}
+                    onSubmit={isEditMode ? handleUpdateSession : undefined}
+                >
+                    {!isEditMode ? (
+                        <div>
+                            <p><strong>Title:</strong> {viewSession.title}</p>
+                            <p><strong>Type:</strong> <span className={`status-badge ${viewSession.type === 'rehearsal' ? 'status-nfc' : 'status-manual'}`}>{viewSession.type}</span></p>
+                            <p><strong>Status:</strong> <span className="status-badge" style={{ background: statusColors[viewSession.status || 'active'].bg, color: statusColors[viewSession.status || 'active'].color }}>{viewSession.status || 'active'}</span></p>
+                            <p><strong>Start Time:</strong> {new Date(viewSession.start_time).toLocaleString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</p>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+                                <button className="btn" style={{ background: 'var(--primary-color)' }} onClick={() => handleViewAttendance(viewSession)}>
+                                    View Attendance
+                                </button>
+                                <button className="btn" style={{ background: '#4b5563' }} onClick={() => setIsEditMode(true)}>
+                                    Edit Details
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Session Title</label>
+                                <input placeholder="Session Title" value={editSessionData.title} onChange={e => setEditSessionData({ ...editSessionData, title: e.target.value })} style={{ width: '100%' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled Start Time</label>
+                                <DatePicker
+                                    selected={editSessionData.start_time}
+                                    onChange={(date) => setEditSessionData({ ...editSessionData, start_time: date })}
+                                    showTimeSelect
+                                    dateFormat="Pp"
+                                    className="date-picker-input"
+                                    wrapperClassName="date-picker-wrapper"
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Session Type</label>
+                                <select value={editSessionData.type} onChange={e => setEditSessionData({ ...editSessionData, type: e.target.value })} style={{ width: '100%' }}>
+                                    <option value="rehearsal">Rehearsal</option>
+                                    <option value="program">Program</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Status</label>
+                                <select value={editSessionData.status} onChange={e => setEditSessionData({ ...editSessionData, status: e.target.value })} style={{ width: '100%' }}>
+                                    <option value="active">Active</option>
+                                    <option value="concluded">Concluded</option>
+                                    <option value="archived">Archived</option>
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+                                <button type="button" className="btn" style={{ background: 'transparent', border: '1px solid var(--text-secondary)' }} onClick={() => setIsEditMode(false)}>
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </Modal>
+            )}
 
             {/* Delete Confirmation Modal */}
             {deleteTarget && (

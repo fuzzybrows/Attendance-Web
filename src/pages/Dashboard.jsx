@@ -333,7 +333,7 @@ function Dashboard() {
                             </div>
                         </div>
                         {(() => {
-                            const activeSessions = sessions.filter(s => s.status === 'active' || !s.status);
+                            const activeSessions = sessions.filter(s => s.status === 'active' || !s.status).slice(0, 1);
                             if (activeSessions.length === 0) {
                                 return <p style={{ color: 'var(--text-secondary)' }}>No active sessions.</p>;
                             }

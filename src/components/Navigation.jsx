@@ -29,6 +29,9 @@ const Navigation = () => {
                     <NavLink to="/" style={({ isActive }) => ({ color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 })}>
                         Dashboard
                     </NavLink>
+                    <NavLink to="/calendar" style={({ isActive }) => ({ color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 })}>
+                        Calendar
+                    </NavLink>
                     {isAdmin && (
                         <>
                             <NavLink to="/members" style={({ isActive }) => ({ color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600 })}>
@@ -77,6 +80,9 @@ const Navigation = () => {
                 }}>
                     <NavLink to="/" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600, padding: '0.5rem 0' })}>
                         Dashboard
+                    </NavLink>
+                    <NavLink to="/calendar" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600, padding: '0.5rem 0' })}>
+                        Calendar
                     </NavLink>
                     {isAdmin && (
                         <>

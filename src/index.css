@@ -270,3 +270,20 @@ select {
   background-color: var(--primary-color) !important;
   color: white !important;
 }
+
+/* React Big Calendar Overrides for Tailwind */
+.rbc-calendar {
+  min-height: 500px;
+}
+
+.rbc-month-view,
+.rbc-time-view {
+  flex: 1 1 0%;
+  min-height: 500px;
+}
+
+.rbc-month-row {
+  flex-basis: 15% !important;
+  /* Ensure month rows have a forced minimum height basis */
+  min-height: 80px;
+}

@@ -32,6 +32,12 @@ export const updateSessionStatus = createAsyncThunk('sessions/updateSessionStatu
     return response.data;
 });
 
+export const updateSession = createAsyncThunk('sessions/updateSession', async ({ id, data }) => {
+    logger.info('Updating session details', { type: 'session_update', session_id: id });
+    const response = await axios.patch(`/sessions/${id}`, data);
+    return response.data;
+});
+
 const sessionsSlice = createSlice({
     name: 'sessions',
     initialState: { items: [], status: 'idle', currentSession: null },
@@ -62,6 +68,13 @@ const sessionsSlice = createSlice({
                 }
             })
             .addCase(updateSessionStatus.fulfilled, (state, action) => {
+                const idx = state.items.findIndex(s => s.id === action.payload.id);
+                if (idx !== -1) state.items[idx] = action.payload;
+                if (state.currentSession?.id === action.payload.id) {
+                    state.currentSession = action.payload;
+                }
+            })
+            .addCase(updateSession.fulfilled, (state, action) => {
                 const idx = state.items.findIndex(s => s.id === action.payload.id);
                 if (idx !== -1) state.items[idx] = action.payload;
                 if (state.currentSession?.id === action.payload.id) {

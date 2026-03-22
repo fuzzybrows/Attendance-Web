@@ -11,6 +11,7 @@ import ResetPassword from './pages/ResetPassword';
 import MembersManagement from './pages/MembersManagement';
 import Sessions from './pages/Sessions';
 import QRAttendance from './pages/QRAttendance';
+import Calendar from './pages/Calendar';
 
 const ProtectedRoute = ({ children, requiredPermission }) => {
   const { token, user } = useSelector(state => state.auth);
@@ -61,6 +62,7 @@ function App() {
             <Route path="/qr-attendance" element={<QRAttendance />} />
 
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
             <Route path="/members" element={<ProtectedRoute requiredPermission="admin"><MembersManagement /></ProtectedRoute>} />
             <Route path="/sessions" element={<ProtectedRoute requiredPermission="admin"><Sessions /></ProtectedRoute>} />
             <Route path="/stats" element={<ProtectedRoute requiredPermission="admin"><Statistics /></ProtectedRoute>} />
