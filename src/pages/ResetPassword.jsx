@@ -16,7 +16,8 @@ function ResetPassword() {
         setLoading(true);
         setError('');
         try {
-            await axios.post('/auth/forgot-password', null, { params: { login } });
+            const res = await axios.post('/auth/forgot-password', null, { params: { login } });
+            alert(res.data.status);
             setStep(2);
         } catch (err) {
             setError(err.response?.data?.detail || 'Request failed');
