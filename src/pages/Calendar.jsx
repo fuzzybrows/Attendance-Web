@@ -8,8 +8,10 @@ import {
     fetchSchedule,
     generateSchedule,
     updateAvailability,
+    updateDayAvailability,
     saveSchedule,
-    setLocalSchedule
+    setLocalSchedule,
+    fetchUnavailableDays
 } from '../store/calendarSlice';
 
 const localizer = momentLocalizer(moment);
@@ -18,14 +20,65 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const Calendar = () => {
     const dispatch = useDispatch();
-    const { availability, schedule, status, error } = useSelector((state) => state.calendar);
+    const { availability, schedule, unavailableDays, status, error } = useSelector((state) => state.calendar);
     const { token, user: member } = useSelector((state) => state.auth);
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [isAvailable, setIsAvailable] = useState(true);
+    const [selectedDays, setSelectedDays] = useState([]); // array of date strings for day-level modal
+    const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+    const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+    const [generateMonth, setGenerateMonth] = useState(new Date().getMonth() + 1);
+    const [generateYear, setGenerateYear] = useState(new Date().getFullYear());
 
-    const isAdmin = member?.permissions?.some(p => p.name === 'admin');
+    const isAdmin = member?.permissions?.includes('admin') || member?.roles?.includes('admin');
+
+    // Custom Date Header component for checkboxes
+    const CustomDateHeader = ({ label, date }) => {
+        const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        const isSelected = selectedDays.includes(localDateStr);
+
+        if (!isMultiSelectMode) return <span>{label}</span>;
+
+        return (
+            <div 
+                style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    width: '100%',
+                    padding: '2px 6px',
+                    margin: '-2px -4px',
+                    cursor: 'pointer',
+                    borderRadius: '4px',
+                    transition: 'all 0.2s',
+                    background: isSelected ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                    pointerEvents: 'none' // Let the cell-level onSelectSlot handle it to avoid double-toggling
+                }}
+            >
+                <span style={{ 
+                    fontWeight: isSelected ? '700' : '500', 
+                    color: isSelected ? '#f8fafc' : '#94a3b8',
+                    fontSize: '0.9rem'
+                }}>
+                    {label}
+                </span>
+                <input 
+                    type="checkbox" 
+                    checked={isSelected}
+                    readOnly
+                    style={{ 
+                        cursor: 'pointer',
+                        width: '18px',
+                        height: '18px',
+                        margin: 0,
+                        accentColor: '#6366f1'
+                    }}
+                />
+            </div>
+        );
+    };
 
     // Fetch data when month changes
     useEffect(() => {
@@ -36,6 +89,7 @@ const Calendar = () => {
                 dispatch(fetchMonthAvailability({ year, month, token }));
             }
             dispatch(fetchSchedule({ year, month, token }));
+            dispatch(fetchUnavailableDays({ year, month, token }));
         }
     }, [currentDate, token, dispatch, isAdmin]);
 
@@ -86,10 +140,55 @@ const Calendar = () => {
             .catch((err) => alert("Failed to update availability: " + err));
     };
 
-    const handleGenerateSchedule = () => {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
+    const handleSelectSlot = ({ slots, action }) => {
+        // action can be 'select' or 'click'
+        console.log("Slot selected:", { slots, action, isMultiSelectMode });
+        
+        // Extract unique local dates
+        const uniqueDates = [...new Set(slots.map(date => {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }))];
+
+        if (isMultiSelectMode) {
+            setSelectedDays(prev => {
+                let next = [...prev];
+                uniqueDates.forEach(d => {
+                    if (next.includes(d)) {
+                        next = next.filter(existing => existing !== d);
+                    } else {
+                        next.push(d);
+                    }
+                });
+                return next.sort();
+            });
+        } else {
+            // In single select mode, we only set one day unless drag happened
+            if (uniqueDates.length > 0) {
+                setSelectedDays(uniqueDates);
+            }
+        }
+    };
+
+    const handleMarkDay = (isAvail) => {
+        Promise.all(selectedDays.map(date => 
+            dispatch(updateDayAvailability({ date, isAvailable: isAvail, token })).unwrap()
+        ))
+        .then(() => {
+            const count = selectedDays.length;
+            setSelectedDays([]);
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth() + 1;
+            dispatch(fetchSchedule({ year, month, token }));
+            dispatch(fetchUnavailableDays({ year, month, token }));
+            if (isAdmin) dispatch(fetchMonthAvailability({ year, month, token }));
+            alert(`${count} day(s) marked as ${isAvail ? 'available' : 'unavailable'}.`);
+        })
+        .catch((err) => alert("Failed to update availability: " + err));
+    };
+
+    const handleGenerateSchedule = (month, year) => {
         dispatch(generateSchedule({ year, month, token }));
+        setIsGenerateModalOpen(false);
     };
 
     const handleSaveSchedule = () => {
@@ -115,6 +214,15 @@ const Calendar = () => {
                 <h1 className="text-3xl font-bold text-gray-800">Schedule & Calendar</h1>
                 <div className="flex gap-2">
                     <button
+                        onClick={() => {
+                            setIsMultiSelectMode(!isMultiSelectMode);
+                            setSelectedDays([]); // clear selection when toggling mode
+                        }}
+                        className={`px-4 py-2 rounded shadow transition font-medium ${isMultiSelectMode ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}`}
+                    >
+                        {isMultiSelectMode ? 'Cancel Multi-Select' : 'Select Multiple Days'}
+                    </button>
+                    <button
                         onClick={handleSyncICS}
                         className="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 transition"
                     >
@@ -123,7 +231,11 @@ const Calendar = () => {
                     {isAdmin && (
                         <>
                             <button
-                                onClick={handleGenerateSchedule}
+                                onClick={() => {
+                                    setGenerateMonth(currentDate.getMonth() + 1);
+                                    setGenerateYear(currentDate.getFullYear());
+                                    setIsGenerateModalOpen(true);
+                                }}
                                 className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition"
                             >
                                 Auto-Generate Roles
@@ -150,7 +262,7 @@ const Calendar = () => {
             {status === 'loading' && <p className="text-blue-500 mb-4">Loading calendar data...</p>}
             {error && <p className="text-red-500 mb-4">{error}</p>}
 
-            <div className="bg-white p-4 rounded-xl shadow-lg mb-8" style={{ height: '70vh', minHeight: '600px' }}>
+            <div className="glass-card" style={{ height: '70vh', minHeight: '600px', padding: '1rem' }}>
                 <BigCalendar
                     localizer={localizer}
                     events={events}
@@ -160,38 +272,93 @@ const Calendar = () => {
                     style={{ height: '100%' }}
                     onNavigate={(date) => setCurrentDate(date)}
                     onSelectEvent={handleSelectEvent}
+                    onSelectSlot={handleSelectSlot}
+                    selectable
                     views={['month', 'week', 'day']}
+                    components={{
+                        month: {
+                            dateHeader: CustomDateHeader
+                        }
+                    }}
+                    dayPropGetter={(date) => {
+                        const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                        
+                        let style = {};
+                        if (unavailableDays?.includes(localDateStr)) {
+                            style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                            style.opacity = 0.8;
+                        }
+                        
+                        if (isMultiSelectMode && selectedDays.includes(localDateStr)) {
+                            style.border = '2px solid #6366f1';
+                            style.backgroundColor = 'rgba(99, 102, 241, 0.15)';
+                            style.opacity = 1;
+                        }
+
+                        return { style };
+                    }}
                 />
             </div>
 
             {/* Event Details Modal */}
             {selectedEvent && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-                        <div className="flex justify-between items-start mb-4">
-                            <h2 className="text-xl font-bold">{selectedEvent.title}</h2>
-                            <button onClick={() => setSelectedEvent(null)} className="text-gray-500 hover:text-gray-700">&times;</button>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+                    <div style={{ background: '#1e293b', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.4)', width: '100%', maxWidth: '420px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: '#f8fafc' }}>{selectedEvent.title}</h2>
+                            <button onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
                         </div>
-                        <p className="text-sm text-gray-600 mb-4">{selectedEvent.start.toLocaleString()}</p>
+                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '1rem' }}>{selectedEvent.start.toLocaleString()}</p>
 
-                        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                            <h3 className="font-semibold mb-2">My Availability</h3>
+                        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                            <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#f8fafc' }}>My Availability</h3>
                             <button
                                 onClick={handleToggleAvailability}
-                                className={`w-full py-2 rounded font-medium transition ${isAvailable ? 'bg-green-100 text-green-800 border-2 border-green-500' : 'bg-red-100 text-red-800 border-2 border-transparent'}`}
+                                style={{
+                                    width: '100%', padding: '0.5rem', borderRadius: '8px', fontWeight: 500, cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    background: isAvailable ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                                    color: isAvailable ? '#34d399' : '#f87171',
+                                    border: isAvailable ? '2px solid rgba(16,185,129,0.4)' : '2px solid rgba(239,68,68,0.3)'
+                                }}
                             >
                                 {isAvailable ? '✅ I am available' : '❌ I am unavailable'}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const dayStr = selectedEvent.start.toISOString().split('T')[0];
+                                    if (window.confirm(`Mark ALL sessions on ${dayStr} as unavailable?`)) {
+                                        dispatch(updateDayAvailability({ date: dayStr, isAvailable: false, token }))
+                                            .unwrap()
+                                            .then(() => {
+                                                setSelectedEvent(null);
+                                                const year = currentDate.getFullYear();
+                                                const month = currentDate.getMonth() + 1;
+                                                dispatch(fetchSchedule({ year, month, token }));
+                                                if (isAdmin) dispatch(fetchMonthAvailability({ year, month, token }));
+                                                alert(`All sessions on ${dayStr} marked as unavailable.`);
+                                            })
+                                            .catch((err) => alert(err));
+                                    }
+                                }}
+                                style={{
+                                    width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '8px', fontWeight: 500, cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    background: 'rgba(245,158,11,0.12)', color: '#fbbf24', border: '2px solid rgba(245,158,11,0.3)'
+                                }}
+                            >
+                                🚫 Mark whole day unavailable
                             </button>
                         </div>
 
                         {selectedEvent.assignments.length > 0 && (
-                            <div className="mb-4">
-                                <h3 className="font-semibold mb-2">Role Assignments</h3>
-                                <ul className="space-y-2">
+                            <div style={{ marginBottom: '1rem' }}>
+                                <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#f8fafc' }}>Role Assignments</h3>
+                                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                                     {selectedEvent.assignments.map((a, idx) => (
-                                        <li key={idx} className="flex justify-between text-sm py-1 border-b">
-                                            <span className="text-gray-600 capitalize">{a.role.replace('_', ' ')}:</span>
-                                            <span className="font-medium">{a.member_name}</span>
+                                        <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', padding: '0.25rem 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                            <span style={{ color: '#94a3b8', textTransform: 'capitalize' }}>{a.role.replace('_', ' ')}:</span>
+                                            <span style={{ fontWeight: 500, color: '#f8fafc' }}>{a.member_name}</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -199,8 +366,140 @@ const Calendar = () => {
                         )}
 
                         {selectedEvent.assignments.length === 0 && (
-                            <p className="text-sm text-gray-500 italic">No roles assigned for this session yet.</p>
+                            <p style={{ fontSize: '0.875rem', color: '#64748b', fontStyle: 'italic' }}>No roles assigned for this session yet.</p>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Day Selection Modal (Single-Day Mode) */}
+            {!isMultiSelectMode && selectedDays.length > 0 && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+                    <div style={{ background: '#1e293b', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.4)', width: '100%', maxWidth: '360px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: '#f8fafc' }}>
+                                📅 {selectedDays.length === 1 ? selectedDays[0] : `${selectedDays[0]} to ${selectedDays[selectedDays.length - 1]}`}
+                            </h2>
+                            <button onClick={() => setSelectedDays([])} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
+                        </div>
+                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '1.5rem' }}>Set your availability for <strong style={{ color: '#f8fafc' }}>{selectedDays.length > 1 ? 'all selected days' : 'all sessions on this day'}</strong>.</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <button
+                                onClick={() => handleMarkDay(false)}
+                                style={{
+                                    width: '100%', padding: '0.5rem', borderRadius: '8px', fontWeight: 500, cursor: 'pointer',
+                                    background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '2px solid rgba(239,68,68,0.3)', transition: 'all 0.2s'
+                                }}
+                            >
+                                🚫 Mark {selectedDays.length > 1 ? `${selectedDays.length} days` : 'whole day'} unavailable
+                            </button>
+                            <button
+                                onClick={() => handleMarkDay(true)}
+                                style={{
+                                    width: '100%', padding: '0.5rem', borderRadius: '8px', fontWeight: 500, cursor: 'pointer',
+                                    background: 'rgba(16,185,129,0.15)', color: '#34d399', border: '2px solid rgba(16,185,129,0.3)', transition: 'all 0.2s'
+                                }}
+                            >
+                                ✅ Mark {selectedDays.length > 1 ? `${selectedDays.length} days` : 'whole day'} available
+                            </button>
+                            <button
+                                onClick={() => setSelectedDays([])}
+                                style={{
+                                    width: '100%', padding: '0.5rem', borderRadius: '8px', fontWeight: 500, cursor: 'pointer',
+                                    background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: '1px solid rgba(255,255,255,0.15)', transition: 'all 0.2s'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Multi-Select Floating Action Bar */}
+            {isMultiSelectMode && selectedDays.length > 0 && (
+                <div style={{ 
+                    position: 'fixed', 
+                    bottom: '2rem', 
+                    left: '50%', 
+                    transform: 'translateX(-50%)', 
+                    background: 'rgba(30, 41, 59, 0.9)', 
+                    backdropFilter: 'blur(12px)',
+                    padding: '1rem 1.5rem', 
+                    borderRadius: '16px', 
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.6)', 
+                    display: 'flex', 
+                    gap: '1rem', 
+                    alignItems: 'center', 
+                    zIndex: 1000, 
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    animation: 'slideUp 0.3s ease-out'
+                }}>
+                    <style>{`
+                        @keyframes slideUp {
+                            from { transform: translate(-50%, 20px); opacity: 0; }
+                            to { transform: translate(-50%, 0); opacity: 1; }
+                        }
+                    `}</style>
+                    <span style={{ color: '#f8fafc', fontWeight: 'bold', fontSize: '1.1rem' }}>{selectedDays.length} days selected</span>
+                    <button onClick={() => handleMarkDay(false)} className="bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg font-medium hover:bg-red-500/30 transition shadow-sm">
+                        🚫 Mark Unavailable
+                    </button>
+                    <button onClick={() => handleMarkDay(true)} className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-lg font-medium hover:bg-emerald-500/30 transition shadow-sm">
+                        ✅ Mark Available
+                    </button>
+                    <button onClick={() => setSelectedDays([])} className="text-slate-400 hover:text-white px-2 font-medium transition">
+                        Clear
+                    </button>
+                </div>
+            )}
+            {/* Auto-Generate Month/Year Selection Modal */}
+            {isGenerateModalOpen && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, backdropFilter: 'blur(8px)' }}>
+                    <div className="glass-card" style={{ padding: '2rem', width: '100%', maxWidth: '400px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <h2 className="text-2xl font-bold text-white mb-6">Select Month & Year</h2>
+                        <p className="text-slate-400 mb-6">Choose which month to auto-generate singer assignments for.</p>
+                        
+                        <div className="mb-4">
+                            <label className="block text-slate-400 text-sm mb-2">Month</label>
+                            <select 
+                                value={generateMonth} 
+                                onChange={(e) => setGenerateMonth(Number(e.target.value))}
+                                style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '100%', padding: '0.75rem', borderRadius: '0.5rem' }}
+                            >
+                                {moment.months().map((m, i) => (
+                                    <option key={m} value={i + 1}>{m}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="mb-8">
+                            <label className="block text-slate-400 text-sm mb-2">Year</label>
+                            <select 
+                                value={generateYear} 
+                                onChange={(e) => setGenerateYear(Number(e.target.value))}
+                                style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', color: 'white', width: '100%', padding: '0.75rem', borderRadius: '0.5rem' }}
+                            >
+                                {[new Date().getFullYear(), new Date().getFullYear() + 1].map(y => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button 
+                                onClick={() => setIsGenerateModalOpen(false)}
+                                className="flex-1 bg-slate-700 text-slate-200 py-3 rounded-xl font-semibold hover:bg-slate-600 transition"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={() => handleGenerateSchedule(generateMonth, generateYear)}
+                                className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition shadow-lg shadow-blue-900/40"
+                            >
+                                Generate
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

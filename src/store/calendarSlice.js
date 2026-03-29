@@ -38,6 +38,22 @@ export const updateAvailability = createAsyncThunk(
     }
 );
 
+export const updateDayAvailability = createAsyncThunk(
+    'calendar/updateDayAvailability',
+    async ({ date, isAvailable, token }, { rejectWithValue }) => {
+        try {
+            const response = await axios.post(
+                `${API_URL}/calendar/availability/day`,
+                { date, is_available: isAvailable },
+                authConfig(token)
+            );
+            return response.data;
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || 'Failed to update day availability');
+        }
+    }
+);
+
 export const fetchSchedule = createAsyncThunk(
     'calendar/fetchSchedule',
     async ({ year, month, token }, { rejectWithValue }) => {
@@ -46,6 +62,18 @@ export const fetchSchedule = createAsyncThunk(
             return response.data; // { sessions: [...] }
         } catch (err) {
             return rejectWithValue(err.response?.data?.detail || 'Failed to fetch schedule');
+        }
+    }
+);
+
+export const fetchUnavailableDays = createAsyncThunk(
+    'calendar/fetchUnavailableDays',
+    async ({ year, month, token }, { rejectWithValue }) => {
+        try {
+            const response = await axios.get(`${API_URL}/calendar/availability/days/${year}/${month}`, authConfig(token));
+            return response.data; // { unavailable_days: [...] }
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || 'Failed to fetch unavailable days');
         }
     }
 );
@@ -77,6 +105,7 @@ export const saveSchedule = createAsyncThunk(
 const initialState = {
     availability: null, // { sessions: [] }
     schedule: null, // { sessions: [] }
+    unavailableDays: [], // ['YYYY-MM-DD']
     status: 'idle',
     error: null,
 };
@@ -121,6 +150,24 @@ const calendarSlice = createSlice({
         builder.addCase(fetchSchedule.rejected, (state, action) => {
             state.status = 'failed';
             state.error = action.payload;
+        });
+
+        // Fetch Unavailable Days
+        builder.addCase(fetchUnavailableDays.fulfilled, (state, action) => {
+            state.unavailableDays = action.payload.unavailable_days || [];
+        });
+
+        // Update Day Availability
+        builder.addCase(updateDayAvailability.fulfilled, (state, action) => {
+            const dateStr = action.payload.date;
+            const isAvail = action.payload.is_available;
+            if (isAvail) {
+                state.unavailableDays = state.unavailableDays.filter(d => d !== dateStr);
+            } else {
+                if (!state.unavailableDays.includes(dateStr)) {
+                    state.unavailableDays.push(dateStr);
+                }
+            }
         });
 
         // Generate Schedule (Draft)

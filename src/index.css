@@ -1,3 +1,6 @@
+@import "tailwindcss" layer(utilities);
+@import "tailwindcss/theme" layer(theme);
+
 :root {
   --primary-color: #6366f1;
   --primary-hover: #4f46e5;
@@ -286,4 +289,139 @@ select {
   flex-basis: 15% !important;
   /* Ensure month rows have a forced minimum height basis */
   min-height: 80px;
+}
+
+/* Dark theme for react-big-calendar */
+.rbc-calendar {
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.rbc-toolbar {
+  margin-bottom: 1rem;
+}
+
+.rbc-toolbar button {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rbc-toolbar button:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.rbc-toolbar button.rbc-active {
+  background: rgba(99, 102, 241, 0.3);
+  border-color: #6366f1;
+  color: #a5b4fc;
+}
+
+.rbc-toolbar-label {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.rbc-header {
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.rbc-header + .rbc-header {
+  border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.rbc-month-view {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.rbc-month-row + .rbc-month-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.rbc-day-bg {
+  background: transparent;
+}
+
+.rbc-day-bg + .rbc-day-bg {
+  border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.rbc-off-range-bg {
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+
+.rbc-today {
+  background: rgba(99, 102, 241, 0.12) !important;
+}
+
+.rbc-date-cell {
+  color: var(--text-primary);
+  padding: 0.25rem 0.5rem;
+}
+
+.rbc-off-range {
+  color: rgba(148, 163, 184, 0.4);
+}
+
+.rbc-event {
+  background: linear-gradient(135deg, #6366f1, #818cf8) !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 2px 6px !important;
+  font-size: 0.8rem;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.rbc-event:hover {
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5);
+}
+
+.rbc-event-content {
+  color: #fff;
+}
+
+.rbc-show-more {
+  color: #818cf8;
+  font-weight: 500;
+}
+
+.rbc-time-view {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.rbc-time-header-content {
+  border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.rbc-timeslot-group {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.rbc-time-content {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.rbc-time-slot {
+  color: var(--text-secondary);
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+.rbc-current-time-indicator {
+  background-color: #ef4444;
 }
