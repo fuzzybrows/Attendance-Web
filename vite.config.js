@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => {
         : []
     },
     server: {
+      allowedHosts: env.VITE_ALLOWED_HOSTS
+        ? env.VITE_ALLOWED_HOSTS.split(',')
+        : [],
       proxy: {
         '/auth': apiUrl,
         '/members': apiUrl,
