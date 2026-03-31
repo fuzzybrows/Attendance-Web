@@ -151,12 +151,21 @@ const Calendar = () => {
         return [...internalEvents, ...mappedExternal];
     }, [schedule, availability, member, externalEvents]);
 
+    const isMonthLocked = useMemo(() => {
+        if (isAdmin) return false; // Admins are never locked out
+        return schedule?.sessions?.some(s => s.assignments?.length > 0);
+    }, [schedule, isAdmin]);
+
     const handleSelectEvent = (event) => {
+        if (isMonthLocked && !isAdmin) {
+            // We still allow selection to view details, but we'll show a lock notice in the modal
+        }
         setSelectedEvent(event);
         setIsAvailable(!event.optedOut);
     };
 
     const handleToggleAvailability = () => {
+        if (isMonthLocked) return;
         const newAvailability = !isAvailable;
         dispatch(updateAvailability({ sessionId: selectedEvent.id, isAvailable: newAvailability, token }))
             .unwrap()
@@ -172,6 +181,7 @@ const Calendar = () => {
     };
 
     const handleSelectSlot = ({ slots, action }) => {
+        if (isMonthLocked) return;
         // action can be 'select' or 'click'
         console.log("Slot selected:", { slots, action, isMultiSelectMode });
         
@@ -201,6 +211,7 @@ const Calendar = () => {
     };
 
     const handleMarkDay = (isAvail) => {
+        if (isMonthLocked) return;
         Promise.all(selectedDays.map(date => 
             dispatch(updateDayAvailability({ date, isAvailable: isAvail, token })).unwrap()
         ))
@@ -252,15 +263,35 @@ const Calendar = () => {
 
     return (
         <div className="container mx-auto px-4 py-8">
+            {isMonthLocked && (
+                <div style={{ 
+                    background: 'rgba(245, 158, 11, 0.1)', 
+                    border: '1px solid rgba(245, 158, 11, 0.3)', 
+                    color: '#fbbf24', 
+                    padding: '0.75rem 1rem', 
+                    borderRadius: '8px', 
+                    marginBottom: '1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.95rem',
+                    fontWeight: 500
+                }}>
+                    <span>📅</span>
+                    The schedule for {moment(currentDate).format('MMMM YYYY')} has been finalized. Availability is now locked.
+                </div>
+            )}
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800">Schedule & Calendar</h1>
                 <div className="flex gap-2">
                     <button
                         onClick={() => {
+                            if (isMonthLocked) return;
                             setIsMultiSelectMode(!isMultiSelectMode);
                             setSelectedDays([]); // clear selection when toggling mode
                         }}
-                        className={`px-4 py-2 rounded shadow transition font-medium ${isMultiSelectMode ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}`}
+                        disabled={isMonthLocked}
+                        className={`px-4 py-2 rounded shadow transition font-medium ${isMultiSelectMode ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'} ${isMonthLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         {isMultiSelectMode ? 'Cancel Multi-Select' : 'Select Multiple Days'}
                     </button>
@@ -398,13 +429,17 @@ const Calendar = () => {
                                             transition: 'all 0.2s',
                                             background: isAvailable ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
                                             color: isAvailable ? '#34d399' : '#f87171',
-                                            border: isAvailable ? '2px solid rgba(16,185,129,0.4)' : '2px solid rgba(239,68,68,0.3)'
+                                            border: isAvailable ? '2px solid rgba(16,185,129,0.4)' : '2px solid rgba(239,68,68,0.3)',
+                                            opacity: isMonthLocked ? 0.6 : 1,
+                                            cursor: isMonthLocked ? 'not-allowed' : 'pointer'
                                         }}
+                                        disabled={isMonthLocked}
                                     >
                                         {isAvailable ? '✅ I am available' : '❌ I am unavailable'}
                                     </button>
                                     <button
                                         onClick={() => {
+                                            if (isMonthLocked) return;
                                             const dayStr = selectedEvent.start.toISOString().split('T')[0];
                                             if (window.confirm(`Mark ALL sessions on ${dayStr} as unavailable?`)) {
                                                 dispatch(updateDayAvailability({ date: dayStr, isAvailable: false, token }))
@@ -420,14 +455,22 @@ const Calendar = () => {
                                                     .catch((err) => alert(err));
                                             }
                                         }}
+                                        disabled={isMonthLocked}
                                         style={{
-                                            width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '8px', fontWeight: 500, cursor: 'pointer',
+                                            width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '8px', fontWeight: 500,
                                             transition: 'all 0.2s',
-                                            background: 'rgba(245,158,11,0.12)', color: '#fbbf24', border: '2px solid rgba(245,158,11,0.3)'
+                                            background: 'rgba(245,158,11,0.12)', color: '#fbbf24', border: '2px solid rgba(245,158,11,0.3)',
+                                            opacity: isMonthLocked ? 0.6 : 1,
+                                            cursor: isMonthLocked ? 'not-allowed' : 'pointer'
                                         }}
                                     >
                                         🚫 Mark whole day unavailable
                                     </button>
+                                    {isMonthLocked && (
+                                        <p style={{ fontSize: '0.75rem', color: '#fbbf24', marginTop: '0.5rem', textAlign: 'center', fontWeight: 500 }}>
+                                            ⚠️ Availability is locked for finalized schedules.
+                                        </p>
+                                    )}
                                 </div>
 
                                 {selectedEvent.assignments.length > 0 && (
