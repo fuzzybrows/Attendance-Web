@@ -23,7 +23,7 @@ function Dashboard() {
     const [isMemberModalOpen, setMemberModalOpen] = useState(false);
     const [isSessionModalOpen, setSessionModalOpen] = useState(false);
 
-    const [newMember, setNewMember] = useState({ first_name: '', last_name: '', email: '', nfc_id: '' });
+    const [newMember, setNewMember] = useState({ first_name: '', last_name: '', email: '', nfc_id: '', roles: [], permissions: ['member'] });
     const [newSession, setNewSession] = useState({ title: '', type: 'rehearsal', start_time: new Date() });
 
     // Delete confirmation state

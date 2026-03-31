@@ -2,9 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMembers, addMember, updateMember } from '../store/membersSlice';
 import Modal from '../components/Modal';
-
-const ROLES = ['soprano', 'alto', 'tenor', 'bass', 'bass_guitar', 'keyboard', 'drums', 'electric_guitar'];
-const PERMISSIONS = ['admin', 'editor', 'member'];
+import axios from 'axios';
 
 function MembersManagement() {
     const dispatch = useDispatch();
@@ -19,13 +17,28 @@ function MembersManagement() {
         phone_number: '',
         password: '',
         roles: [],
+        permissions: ['member'],
         nfc_id: ''
     });
 
     const [searchQuery, setSearchQuery] = useState('');
+    const [availableRoles, setAvailableRoles] = useState([]);
+    const [availablePermissions, setAvailablePermissions] = useState([]);
 
     useEffect(() => {
         dispatch(fetchMembers());
+        
+        // Fetch metadata (roles and permissions)
+        const fetchMetadata = async () => {
+            try {
+                const response = await axios.get('/members/metadata');
+                setAvailableRoles(response.data.roles || []);
+                setAvailablePermissions(response.data.permissions || []);
+            } catch (err) {
+                console.error('Failed to fetch roles/permissions metadata', err);
+            }
+        };
+        fetchMetadata();
     }, [dispatch]);
 
     const filteredMembers = members.filter(m =>
@@ -40,9 +53,11 @@ function MembersManagement() {
             first_name: newMember.first_name.trim(),
             last_name: newMember.last_name.trim(),
             email: newMember.email.trim(),
-            phone_number: newMember.phone_number.trim(),
-            nfc_id: newMember.nfc_id.trim(),
-            password: newMember.password.trim()
+            phone_number: newMember.phone_number.trim() || null,
+            nfc_id: newMember.nfc_id.trim() || null,
+            password: newMember.password.trim(),
+            roles: newMember.roles,
+            permissions: newMember.permissions
         }));
         setIsAddModalOpen(false);
         setNewMember({
@@ -52,6 +67,7 @@ function MembersManagement() {
             phone_number: '',
             password: '',
             roles: [],
+            permissions: ['member'],
             nfc_id: ''
         });
     };
@@ -94,6 +110,15 @@ function MembersManagement() {
             roles: prev.roles.includes(role)
                 ? prev.roles.filter(r => r !== role)
                 : [...prev.roles, role]
+        }));
+    };
+
+    const toggleNewMemberPermission = (perm) => {
+        setNewMember(prev => ({
+            ...prev,
+            permissions: prev.permissions.includes(perm)
+                ? prev.permissions.filter(p => p !== perm)
+                : [...prev.permissions, perm]
         }));
     };
 
@@ -191,7 +216,7 @@ function MembersManagement() {
 
                 <p style={{ margin: '1rem 0 0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Roles</p>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                    {ROLES.map(role => (
+                    {availableRoles.map(role => (
                         <button
                             key={role}
                             type="button"
@@ -205,6 +230,26 @@ function MembersManagement() {
                             onClick={() => toggleNewMemberRole(role)}
                         >
                             {role}
+                        </button>
+                    ))}
+                </div>
+
+                <p style={{ margin: '1rem 0 0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Permissions</p>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                    {availablePermissions.map(perm => (
+                        <button
+                            key={perm}
+                            type="button"
+                            className="status-badge"
+                            style={{
+                                cursor: 'pointer',
+                                border: 'none',
+                                background: newMember.permissions.includes(perm) ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
+                                color: newMember.permissions.includes(perm) ? 'white' : 'var(--text-secondary)'
+                            }}
+                            onClick={() => toggleNewMemberPermission(perm)}
+                        >
+                            {perm}
                         </button>
                     ))}
                 </div>
@@ -224,7 +269,7 @@ function MembersManagement() {
 
                         <p style={{ margin: '1rem 0 0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Roles</p>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                            {ROLES.map(role => (
+                            {availableRoles.map(role => (
                                 <button
                                     key={role}
                                     type="button"
@@ -244,7 +289,7 @@ function MembersManagement() {
 
                         <p style={{ margin: '1rem 0 0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Permissions</p>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                            {PERMISSIONS.map(perm => (
+                            {availablePermissions.map(perm => (
                                 <button
                                     key={perm}
                                     type="button"

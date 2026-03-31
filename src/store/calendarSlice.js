@@ -1,8 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
 // Config helper
 const authConfig = (token) => ({
     headers: {
@@ -14,7 +12,7 @@ export const fetchMonthAvailability = createAsyncThunk(
     'calendar/fetchMonthAvailability',
     async ({ year, month, token }, { rejectWithValue }) => {
         try {
-            const response = await axios.get(`${API_URL}/calendar/availability/${year}/${month}`, authConfig(token));
+            const response = await axios.get(`/calendar/availability/${year}/${month}`, authConfig(token));
             return response.data; // { sessions: [...] }
         } catch (err) {
             return rejectWithValue(err.response?.data?.detail || 'Failed to fetch availability');
@@ -27,7 +25,7 @@ export const updateAvailability = createAsyncThunk(
     async ({ sessionId, isAvailable, token }, { rejectWithValue }) => {
         try {
             const response = await axios.put(
-                `${API_URL}/calendar/availability?session_id=${sessionId}`,
+                `/calendar/availability?session_id=${sessionId}`,
                 { member_id: 0, session_id: sessionId, is_available: isAvailable }, // backend ignores member_id and uses current_user
                 authConfig(token)
             );
@@ -43,7 +41,7 @@ export const updateDayAvailability = createAsyncThunk(
     async ({ date, isAvailable, token }, { rejectWithValue }) => {
         try {
             const response = await axios.post(
-                `${API_URL}/calendar/availability/day`,
+                `/calendar/availability/day`,
                 { date, is_available: isAvailable },
                 authConfig(token)
             );
@@ -58,7 +56,7 @@ export const fetchSchedule = createAsyncThunk(
     'calendar/fetchSchedule',
     async ({ year, month, token }, { rejectWithValue }) => {
         try {
-            const response = await axios.get(`${API_URL}/calendar/schedule/${year}/${month}`, authConfig(token));
+            const response = await axios.get(`/calendar/schedule/${year}/${month}`, authConfig(token));
             return response.data; // { sessions: [...] }
         } catch (err) {
             return rejectWithValue(err.response?.data?.detail || 'Failed to fetch schedule');
@@ -70,7 +68,7 @@ export const fetchUnavailableDays = createAsyncThunk(
     'calendar/fetchUnavailableDays',
     async ({ year, month, token }, { rejectWithValue }) => {
         try {
-            const response = await axios.get(`${API_URL}/calendar/availability/days/${year}/${month}`, authConfig(token));
+            const response = await axios.get(`/calendar/availability/days/${year}/${month}`, authConfig(token));
             return response.data; // { unavailable_days: [...] }
         } catch (err) {
             return rejectWithValue(err.response?.data?.detail || 'Failed to fetch unavailable days');
@@ -82,7 +80,7 @@ export const generateSchedule = createAsyncThunk(
     'calendar/generateSchedule',
     async ({ year, month, token }, { rejectWithValue }) => {
         try {
-            const response = await axios.post(`${API_URL}/calendar/schedule/generate`, { year, month }, authConfig(token));
+            const response = await axios.post(`/calendar/schedule/generate`, { year, month }, authConfig(token));
             return response.data; // DraftScheduleResponse
         } catch (err) {
             return rejectWithValue(err.response?.data?.detail || 'Failed to generate schedule');
@@ -94,10 +92,22 @@ export const saveSchedule = createAsyncThunk(
     'calendar/saveSchedule',
     async ({ scheduleData, token }, { rejectWithValue }) => {
         try {
-            const response = await axios.post(`${API_URL}/calendar/schedule/save`, scheduleData, authConfig(token));
+            const response = await axios.post(`/calendar/schedule/save`, scheduleData, authConfig(token));
             return response.data;
         } catch (err) {
             return rejectWithValue(err.response?.data?.detail || 'Failed to save schedule');
+        }
+    }
+);
+
+export const fetchExternalEvents = createAsyncThunk(
+    'calendar/fetchExternalEvents',
+    async ({ year, month, token }, { rejectWithValue }) => {
+        try {
+            const response = await axios.get(`/auth/google/events/${year}/${month}`, authConfig(token));
+            return response.data; // { events: [...], connected: boolean }
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || 'Failed to fetch external events');
         }
     }
 );
@@ -106,7 +116,10 @@ const initialState = {
     availability: null, // { sessions: [] }
     schedule: null, // { sessions: [] }
     unavailableDays: [], // ['YYYY-MM-DD']
+    externalEvents: [], // [{ id, title, start, end, is_external: true }]
+    googleConnected: false,
     status: 'idle',
+    externalStatus: 'idle',
     error: null,
 };
 
@@ -204,7 +217,21 @@ const calendarSlice = createSlice({
         });
         builder.addCase(updateAvailability.rejected, (state, action) => {
             state.error = action.payload;
-        })
+        });
+
+        // Fetch External Events (Google Calendar)
+        builder.addCase(fetchExternalEvents.pending, (state) => {
+            state.externalStatus = 'loading';
+        });
+        builder.addCase(fetchExternalEvents.fulfilled, (state, action) => {
+            state.externalStatus = 'succeeded';
+            state.externalEvents = action.payload.events || [];
+            state.googleConnected = action.payload.connected || false;
+        });
+        builder.addCase(fetchExternalEvents.rejected, (state, action) => {
+            state.externalStatus = 'failed';
+            state.error = action.payload;
+        });
     },
 });
 

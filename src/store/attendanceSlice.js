@@ -2,15 +2,14 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import logger from '../utils/logger';
 
-const API_BASE = '';
 
 export const fetchAttendance = createAsyncThunk('attendance/fetchAttendance', async (sessionId) => {
-    const response = await axios.get(`${API_BASE}/attendance/session/${sessionId}`);
+    const response = await axios.get(`/attendance/session/${sessionId}`);
     return response.data;
 });
 
 export const fetchMemberHistory = createAsyncThunk('attendance/fetchMemberHistory', async (memberId) => {
-    const response = await axios.get(`${API_BASE}/attendance/member/${memberId}`);
+    const response = await axios.get(`/attendance/member/${memberId}`);
     return response.data;
 });
 
@@ -20,19 +19,19 @@ export const submitAttendance = createAsyncThunk('attendance/submitAttendance', 
     logger.info('Submitting attendance', { type: 'attendance_submit_attempt', member_id: data.member_id, session_id: data.session_id });
     const deviceId = await getDeviceId();
     const payload = { ...data, device_id: deviceId };
-    const response = await axios.post(`${API_BASE}/attendance/`, payload);
+    const response = await axios.post(`/attendance/`, payload);
     logger.info('Attendance submitted', { type: 'attendance_submit_success', attendance_id: response.data.id });
     return response.data;
 });
 
 export const deleteAttendance = createAsyncThunk('attendance/deleteAttendance', async (attendanceId) => {
-    await axios.delete(`${API_BASE}/attendance/${attendanceId}`);
+    await axios.delete(`/attendance/${attendanceId}`);
     return attendanceId;
 });
 
 export const bulkDeleteAttendance = createAsyncThunk('attendance/bulkDeleteAttendance', async (ids) => {
     logger.warn('Bulk deleting attendance', { type: 'attendance_bulk_delete_attempt', count: ids.length });
-    await axios.post(`${API_BASE}/attendance/bulk-delete`, { ids });
+    await axios.post(`/attendance/bulk-delete`, { ids });
     logger.info('Attendance bulk deleted', { type: 'attendance_bulk_delete_success' });
     return ids;
 });

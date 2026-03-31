@@ -7,8 +7,8 @@ import './index.css'
 
 import axios from 'axios';
 
-// API Configuration
-// axios.defaults.baseURL = 'http://127.0.0.1:8001';
+// API Configuration - Connect directly to the standalone API server
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {

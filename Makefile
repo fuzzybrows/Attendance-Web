@@ -10,7 +10,7 @@ install:
 
 # Run in development mode
 dev:
-	npm run dev -- --open --host 0.0.0.0
+	npm run dev -- --open --host 127.0.0.1
 
 # Build for production
 build:

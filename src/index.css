@@ -387,6 +387,15 @@ select {
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5);
 }
 
+.rbc-event.external-event {
+  background: linear-gradient(135deg, #64748b, #94a3b8) !important;
+  box-shadow: 0 2px 8px rgba(100, 116, 139, 0.2) !important;
+}
+
+.rbc-event.external-event:hover {
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.4) !important;
+}
+
 .rbc-event-content {
   color: #fff;
 }
