@@ -125,7 +125,7 @@ const Calendar = () => {
             const isOptedOut = availability?.sessions?.find(s => s.id === session.session_id)?.opted_out_member_ids?.includes(member?.id);
             
             const assignments = session.assignments || [];
-            const isAssigned = assignments.some(a => a.member_id === member?.id);
+            const isAssigned = assignments.some(a => String(a.member_id) === String(member?.id));
 
             return {
                 id: session.session_id || session.id,
@@ -362,11 +362,9 @@ const Calendar = () => {
                         }
                         if (event.isAssigned) {
                             return {
+                                className: 'assigned-event',
                                 style: {
-                                    backgroundColor: '#10b981', // Emerald 500
-                                    border: '1px solid #059669', // Emerald 600
-                                    color: 'white',
-                                    fontWeight: '500'
+                                    fontWeight: '500' // fontWeight isn't globally forced, so inline is fine
                                 }
                             };
                         }

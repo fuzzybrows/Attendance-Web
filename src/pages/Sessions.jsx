@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { fetchMembers } from '../store/membersSlice';
 import { fetchSessions, deleteSession, bulkDeleteSessions, updateSessionStatus, setCurrentSession, updateSession, addSession } from '../store/sessionsSlice';
 import Modal from '../components/Modal';
 import DatePicker from "react-datepicker";
@@ -18,6 +19,7 @@ function Sessions() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const { items: sessions } = useSelector(state => state.sessions);
+    const { items: members } = useSelector(state => state.members);
     const { user } = useSelector(state => state.auth);
     const isAdmin = user?.permissions?.includes('admin');
 
@@ -40,6 +42,10 @@ function Sessions() {
     const [viewSession, setViewSession] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
     const [editSessionData, setEditSessionData] = useState(null);
+    const [sessionAssignments, setSessionAssignments] = useState([]);
+    const [isEditingAssignments, setIsEditingAssignments] = useState(false);
+    const [editedAssignments, setEditedAssignments] = useState([]);
+    const [assignmentsLoading, setAssignmentsLoading] = useState(false);
 
     // Delete state
     const [deleteTarget, setDeleteTarget] = useState(null);
@@ -49,6 +55,7 @@ function Sessions() {
 
     useEffect(() => {
         dispatch(fetchSessions());
+        dispatch(fetchMembers());
 
         const fetchMetadata = async () => {
             try {
@@ -134,13 +141,46 @@ function Sessions() {
         navigate('/');
     };
 
-    const handleViewSession = (session) => {
+    const handleViewSession = async (session) => {
         setViewSession(session);
         setIsEditMode(false);
         setEditSessionData({
             ...session,
             start_time: session.start_time ? new Date(session.start_time) : new Date()
         });
+        
+        setAssignmentsLoading(true);
+        setIsEditingAssignments(false);
+        try {
+            const res = await axios.get(`/calendar/schedule/session/${session.id}`);
+            setSessionAssignments(res.data.assignments || []);
+            setEditedAssignments(res.data.assignments || []);
+        } catch (e) {
+            console.error("Failed to load assignments", e);
+            setSessionAssignments([]);
+            setEditedAssignments([]);
+        } finally {
+            setAssignmentsLoading(false);
+        }
+    };
+
+    const handleSaveAssignments = async () => {
+        try {
+            const payload = {
+                sessions: [{
+                    session_id: viewSession.id,
+                    session_title: viewSession.title,
+                    session_date: viewSession.start_time,
+                    assignments: editedAssignments
+                }]
+            };
+            await axios.post('/calendar/schedule/save', payload);
+            setSessionAssignments(editedAssignments);
+            setIsEditingAssignments(false);
+            alert('Assignments saved successfully!');
+        } catch (e) {
+            alert('Failed to save assignments: ' + e);
+        }
     };
 
     const handleUpdateSession = () => {
@@ -387,6 +427,79 @@ function Sessions() {
                                 <button className="btn" style={{ background: '#4b5563' }} onClick={() => setIsEditMode(true)}>
                                     Edit Details
                                 </button>
+                            </div>
+
+                            {/* Assignments Section */}
+                            <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#f8fafc' }}>Role Assignments</h3>
+                                    {!isEditingAssignments ? (
+                                        <button className="btn" style={{ background: 'transparent', border: '1px solid var(--text-secondary)', padding: '0.25rem 0.6rem', fontSize: '0.8rem' }} onClick={() => setIsEditingAssignments(true)}>
+                                            Edit Roles
+                                        </button>
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button className="btn" style={{ background: 'transparent', border: '1px solid var(--text-secondary)', padding: '0.25rem 0.6rem', fontSize: '0.8rem' }} onClick={() => { setIsEditingAssignments(false); setEditedAssignments(sessionAssignments); }}>
+                                                Cancel
+                                            </button>
+                                            <button className="btn" style={{ background: 'var(--primary-color)', color: 'white', padding: '0.25rem 0.6rem', fontSize: '0.8rem' }} onClick={handleSaveAssignments}>
+                                                Save
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {assignmentsLoading ? (
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Loading assignments...</p>
+                                ) : !isEditingAssignments ? (
+                                    sessionAssignments.length > 0 ? (
+                                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                            {sessionAssignments.map((a, idx) => (
+                                                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', fontSize: '0.9rem' }}>
+                                                    <span style={{ color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{a.role.replace('_', ' ')}</span>
+                                                    <span style={{ fontWeight: 500, color: '#f8fafc' }}>{a.member_name}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No roles assigned for this session.</p>
+                                    )
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        {['lead_singer', 'soprano', 'alto', 'tenor'].map(role => {
+                                            const roleAssign = editedAssignments.find(a => a.role === role);
+                                            return (
+                                                <div key={role} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                                                    <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'capitalize', width: '100px' }}>{role.replace('_', ' ')}</label>
+                                                    <select 
+                                                        style={{ flex: 1, padding: '0.4rem', fontSize: '0.9rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '6px' }}
+                                                        value={roleAssign ? roleAssign.member_id : ''}
+                                                        onChange={e => {
+                                                            const memberId = e.target.value;
+                                                            let nextAssignments = editedAssignments.filter(a => a.role !== role);
+                                                            if (memberId) {
+                                                                const sMember = members.find(m => m.id === parseInt(memberId));
+                                                                if (sMember) {
+                                                                    nextAssignments.push({
+                                                                        member_id: sMember.id,
+                                                                        member_name: `${sMember.first_name} ${sMember.last_name}`,
+                                                                        role: role
+                                                                    });
+                                                                }
+                                                            }
+                                                            setEditedAssignments(nextAssignments);
+                                                        }}
+                                                    >
+                                                        <option value="">-- Unassigned --</option>
+                                                        {members.map(m => (
+                                                            <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ) : (

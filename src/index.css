@@ -396,6 +396,15 @@ select {
   box-shadow: 0 4px 12px rgba(100, 116, 139, 0.4) !important;
 }
 
+.rbc-event.assigned-event {
+  background: linear-gradient(135deg, #10b981, #34d399) !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4) !important;
+}
+
+.rbc-event.assigned-event:hover {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.6) !important;
+}
+
 .rbc-event-content {
   color: #fff;
 }
