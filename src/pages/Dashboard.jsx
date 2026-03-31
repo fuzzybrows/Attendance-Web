@@ -24,7 +24,10 @@ function Dashboard() {
     const [isSessionModalOpen, setSessionModalOpen] = useState(false);
 
     const [newMember, setNewMember] = useState({ first_name: '', last_name: '', email: '', nfc_id: '', roles: [], permissions: ['member'] });
-    const [newSession, setNewSession] = useState({ title: '', type: 'rehearsal', start_time: new Date() });
+    const [newSession, setNewSession] = useState({ title: '', type: 'rehearsal', status: 'scheduled', start_time: new Date() });
+    
+    const [availableTypes, setAvailableTypes] = useState(['rehearsal', 'program']);
+    const [availableStatuses, setAvailableStatuses] = useState(['scheduled', 'active', 'concluded', 'archived']);
 
     // Delete confirmation state
     const [deleteTarget, setDeleteTarget] = useState(null);
@@ -193,6 +196,17 @@ function Dashboard() {
         if (isAdmin) {
             dispatch(fetchMembers());
             dispatch(fetchSessions());
+
+            const fetchMetadata = async () => {
+                try {
+                    const response = await axios.get('/sessions/metadata');
+                    if (response.data.types) setAvailableTypes(response.data.types);
+                    if (response.data.statuses) setAvailableStatuses(response.data.statuses);
+                } catch (err) {
+                    console.error('Failed to fetch session metadata', err);
+                }
+            };
+            fetchMetadata();
         } else if (user) {
             dispatch(fetchMemberHistory(user.id));
         }
@@ -229,7 +243,7 @@ function Dashboard() {
         };
         dispatch(addSession(sessionData));
         setSessionModalOpen(false);
-        setNewSession({ title: '', type: 'rehearsal', start_time: new Date() });
+        setNewSession({ title: '', type: 'rehearsal', status: 'scheduled', start_time: new Date() });
     };
 
     const handleMarkAttendance = async (memberId) => {
@@ -736,21 +750,36 @@ function Dashboard() {
             </Modal>
 
             <Modal title="New Session" isOpen={isSessionModalOpen} onClose={() => setSessionModalOpen(false)} onSubmit={handleAddSession}>
-                <input placeholder="Session Title" value={newSession.title} onChange={e => setNewSession({ ...newSession, title: e.target.value })} />
-                <label style={{ display: 'block', margin: '1rem 0 0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled Start Time</label>
-                <DatePicker
-                    selected={newSession.start_time}
-                    onChange={(date) => setNewSession({ ...newSession, start_time: date })}
-                    showTimeSelect
-                    dateFormat="Pp"
-                    className="date-picker-input"
-                    wrapperClassName="date-picker-wrapper"
-                />
-                <label style={{ display: 'block', margin: '1rem 0 0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Session Type</label>
-                <select value={newSession.type} onChange={e => setNewSession({ ...newSession, type: e.target.value })}>
-                    <option value="rehearsal">Rehearsal</option>
-                    <option value="program">Program</option>
-                </select>
+                <div className="grid grid-2" style={{ gap: '1rem' }}>
+                    <div>
+                        <label className="label">Session Title</label>
+                        <input autoFocus placeholder="e.g. Sunday Service" value={newSession.title} onChange={e => setNewSession({ ...newSession, title: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className="label">Start Time</label>
+                        <DatePicker
+                            selected={newSession.start_time}
+                            onChange={(date) => setNewSession({ ...newSession, start_time: date })}
+                            showTimeSelect
+                            dateFormat="Pp"
+                            className="date-picker-input"
+                        />
+                    </div>
+                </div>
+                <div className="grid grid-2" style={{ gap: '1rem', marginTop: '1rem' }}>
+                    <div>
+                        <label className="label">Session Type</label>
+                        <select value={newSession.type} onChange={e => setNewSession({ ...newSession, type: e.target.value })}>
+                            {availableTypes.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="label">Initial Status</label>
+                        <select value={newSession.status} onChange={e => setNewSession({ ...newSession, status: e.target.value })}>
+                            {availableStatuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                        </select>
+                    </div>
+                </div>
             </Modal>
 
             {/* Password Confirmation Modal for Delete */}

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { fetchSessions, deleteSession, bulkDeleteSessions, updateSessionStatus, setCurrentSession, updateSession } from '../store/sessionsSlice';
+import { fetchSessions, deleteSession, bulkDeleteSessions, updateSessionStatus, setCurrentSession, updateSession, addSession } from '../store/sessionsSlice';
 import Modal from '../components/Modal';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from 'axios';
 
 const statusColors = {
+    scheduled: { bg: 'rgba(56, 189, 248, 0.15)', border: 'rgba(56, 189, 248, 0.4)', color: '#38bdf8' },
     active: { bg: 'rgba(74, 222, 128, 0.15)', border: 'rgba(74, 222, 128, 0.4)', color: '#4ade80' },
     concluded: { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.4)', color: '#fbbf24' },
     archived: { bg: 'rgba(148, 163, 184, 0.15)', border: 'rgba(148, 163, 184, 0.4)', color: '#94a3b8' },
@@ -23,6 +24,17 @@ function Sessions() {
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [selected, setSelected] = useState(new Set());
+    const [availableTypes, setAvailableTypes] = useState(['rehearsal', 'program']);
+    const [availableStatuses, setAvailableStatuses] = useState(['scheduled', 'active', 'concluded', 'archived']);
+
+    // Add Session Modal State
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [newSessionData, setNewSessionData] = useState({
+        title: '',
+        type: 'rehearsal',
+        status: 'scheduled',
+        start_time: new Date()
+    });
 
     // View/Edit Modal State
     const [viewSession, setViewSession] = useState(null);
@@ -37,6 +49,17 @@ function Sessions() {
 
     useEffect(() => {
         dispatch(fetchSessions());
+
+        const fetchMetadata = async () => {
+            try {
+                const response = await axios.get('/sessions/metadata');
+                if (response.data.types) setAvailableTypes(response.data.types);
+                if (response.data.statuses) setAvailableStatuses(response.data.statuses);
+            } catch (err) {
+                console.error('Failed to fetch session metadata', err);
+            }
+        };
+        fetchMetadata();
     }, [dispatch]);
 
     // Redirect non-admin
@@ -64,6 +87,7 @@ function Sessions() {
         .filter(s => statusFilter === 'all' || (s.status || 'active') === statusFilter);
 
     const grouped = {
+        scheduled: filtered.filter(s => s.status === 'scheduled'),
         active: filtered.filter(s => (s.status || 'active') === 'active'),
         concluded: filtered.filter(s => s.status === 'concluded'),
         archived: filtered.filter(s => s.status === 'archived'),
@@ -131,6 +155,21 @@ function Sessions() {
         setViewSession(null);
     };
 
+    const handleAddSession = () => {
+        if (!newSessionData.title.trim()) {
+            alert('Session title is required');
+            return;
+        }
+        const payload = {
+            ...newSessionData,
+            title: newSessionData.title.trim(),
+            start_time: newSessionData.start_time.toISOString(),
+        };
+        dispatch(addSession(payload));
+        setIsAddModalOpen(false);
+        setNewSessionData({ title: '', type: 'rehearsal', status: 'scheduled', start_time: new Date() });
+    };
+
     const renderGroup = (title, items, statusKey) => {
         if (items.length === 0) return null;
         const sc = statusColors[statusKey];
@@ -182,6 +221,7 @@ function Sessions() {
                                     borderRadius: '8px', padding: '0.2rem 0.4rem', fontSize: '0.8rem', cursor: 'pointer', outline: 'none'
                                 }}
                             >
+                                <option value="scheduled">Scheduled</option>
                                 <option value="active">Active</option>
                                 <option value="concluded">Concluded</option>
                                 <option value="archived">Archived</option>
@@ -206,6 +246,13 @@ function Sessions() {
                 <div className="flex-between" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h2 style={{ margin: 0 }}>All Sessions</h2>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <button
+                            className="btn"
+                            style={{ background: 'var(--primary-color)', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                            onClick={() => setIsAddModalOpen(true)}
+                        >
+                            + Add Session
+                        </button>
                         {selected.size > 0 && (
                             <button
                                 className="btn"
@@ -235,7 +282,7 @@ function Sessions() {
                         onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
                     />
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        {['all', 'active', 'concluded', 'archived'].map(f => (
+                        {['all', ...availableStatuses].map(f => (
                             <button
                                 key={f}
                                 className="btn"
@@ -260,12 +307,61 @@ function Sessions() {
                     </p>
                 ) : (
                     <>
+                        {renderGroup('🔵 Scheduled', grouped.scheduled, 'scheduled')}
                         {renderGroup('🟢 Active', grouped.active, 'active')}
                         {renderGroup('🟡 Concluded', grouped.concluded, 'concluded')}
                         {renderGroup('⚪ Archived', grouped.archived, 'archived')}
                     </>
                 )}
             </div>
+
+            {/* Add Session Modal */}
+            {isAddModalOpen && (
+                <Modal
+                    title="Add New Session"
+                    isOpen={isAddModalOpen}
+                    onClose={() => setIsAddModalOpen(false)}
+                    onSubmit={handleAddSession}
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Session Title</label>
+                            <input autoFocus placeholder="e.g. Sunday Service" value={newSessionData.title} onChange={e => setNewSessionData({ ...newSessionData, title: e.target.value })} style={{ width: '100%' }} />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled Start Time</label>
+                            <DatePicker
+                                selected={newSessionData.start_time}
+                                onChange={(date) => setNewSessionData({ ...newSessionData, start_time: date })}
+                                showTimeSelect
+                                dateFormat="Pp"
+                                className="date-picker-input"
+                                wrapperClassName="date-picker-wrapper"
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Session Type</label>
+                            <select value={newSessionData.type} onChange={e => setNewSessionData({ ...newSessionData, type: e.target.value })} style={{ width: '100%' }}>
+                                {availableTypes.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Status</label>
+                            <select value={newSessionData.status} onChange={e => setNewSessionData({ ...newSessionData, status: e.target.value })} style={{ width: '100%' }}>
+                                {availableStatuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                            </select>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
+                            <button type="button" className="btn" style={{ background: 'transparent', border: '1px solid var(--text-secondary)' }} onClick={() => setIsAddModalOpen(false)}>
+                                Cancel
+                            </button>
+                            <button type="button" className="btn" style={{ background: 'var(--primary-color)', color: 'white' }} onClick={handleAddSession}>
+                                Add Session
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
 
             {/* View/Edit Modal */}
             {viewSession && (
@@ -313,16 +409,13 @@ function Sessions() {
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Session Type</label>
                                 <select value={editSessionData.type} onChange={e => setEditSessionData({ ...editSessionData, type: e.target.value })} style={{ width: '100%' }}>
-                                    <option value="rehearsal">Rehearsal</option>
-                                    <option value="program">Program</option>
+                                    {availableTypes.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Status</label>
                                 <select value={editSessionData.status} onChange={e => setEditSessionData({ ...editSessionData, status: e.target.value })} style={{ width: '100%' }}>
-                                    <option value="active">Active</option>
-                                    <option value="concluded">Concluded</option>
-                                    <option value="archived">Archived</option>
+                                    {availableStatuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                                 </select>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
