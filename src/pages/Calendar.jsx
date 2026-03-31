@@ -123,14 +123,18 @@ const Calendar = () => {
 
             // Check if current user is opted out
             const isOptedOut = availability?.sessions?.find(s => s.id === session.session_id)?.opted_out_member_ids?.includes(member?.id);
+            
+            const assignments = session.assignments || [];
+            const isAssigned = assignments.some(a => a.member_id === member?.id);
 
             return {
                 id: session.session_id || session.id,
                 title: session.session_title || session.title,
                 start,
                 end,
-                assignments: session.assignments || [],
+                assignments: assignments,
                 optedOut: isOptedOut || false,
+                isAssigned: isAssigned,
                 originalData: session,
                 is_external: false
             }
@@ -353,6 +357,16 @@ const Calendar = () => {
                                 style: {
                                     opacity: 0.8,
                                     fontSize: '0.85rem' // Slightly smaller text
+                                }
+                            };
+                        }
+                        if (event.isAssigned) {
+                            return {
+                                style: {
+                                    backgroundColor: '#10b981', // Emerald 500
+                                    border: '1px solid #059669', // Emerald 600
+                                    color: 'white',
+                                    fontWeight: '500'
                                 }
                             };
                         }
