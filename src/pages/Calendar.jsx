@@ -14,6 +14,7 @@ import {
     fetchUnavailableDays,
     fetchExternalEvents
 } from '../store/calendarSlice';
+import { fetchMembers } from '../store/membersSlice';
 import axios from 'axios';
 
 const localizer = momentLocalizer(moment);
@@ -23,11 +24,14 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const Calendar = () => {
     const dispatch = useDispatch();
     const { availability, schedule, unavailableDays, externalEvents, googleConnected, status, error } = useSelector((state) => state.calendar);
-    const { token, user: member } = useSelector((state) => state.auth);
+    const { items: members } = useSelector((state) => state.members);
+    const { token, user: currentUser } = useSelector((state) => state.auth);
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [currentView, setCurrentView] = useState('month');
     const [selectedEvent, setSelectedEvent] = useState(null);
+    const [isEditingAssignments, setIsEditingAssignments] = useState(false);
+    const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
     const [isAvailable, setIsAvailable] = useState(true);
     const [selectedDays, setSelectedDays] = useState([]); // array of date strings for day-level modal
     const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
@@ -35,7 +39,7 @@ const Calendar = () => {
     const [generateMonth, setGenerateMonth] = useState(new Date().getMonth() + 1);
     const [generateYear, setGenerateYear] = useState(new Date().getFullYear());
 
-    const isAdmin = member?.permissions?.includes('admin') || member?.roles?.includes('admin');
+    const isAdmin = currentUser?.permissions?.includes('admin') || currentUser?.roles?.includes('admin');
 
     // Custom Date Header component for checkboxes
     const CustomDateHeader = ({ label, date }) => {
@@ -90,6 +94,7 @@ const Calendar = () => {
             const month = currentDate.getMonth() + 1; // 1-indexed for backend
             if (isAdmin) {
                 dispatch(fetchMonthAvailability({ year, month, token }));
+                dispatch(fetchMembers());
             }
             dispatch(fetchSchedule({ year, month, token }));
             dispatch(fetchUnavailableDays({ year, month, token }));
@@ -122,10 +127,10 @@ const Calendar = () => {
             const end = new Date(start.getTime() + 3 * 60 * 60 * 1000); // add 3 hrs for UI bounds
 
             // Check if current user is opted out
-            const isOptedOut = availability?.sessions?.find(s => s.id === session.session_id)?.opted_out_member_ids?.includes(member?.id);
+            const isOptedOut = availability?.sessions?.find(s => s.id === (session.session_id || session.id))?.opted_out_member_ids?.includes(currentUser?.id);
             
             const assignments = session.assignments || [];
-            const isAssigned = assignments.some(a => String(a.member_id) === String(member?.id));
+            const isAssigned = assignments.some(a => String(a.member_id) === String(currentUser?.id));
 
             return {
                 id: session.session_id || session.id,
@@ -149,7 +154,7 @@ const Calendar = () => {
         }));
 
         return [...internalEvents, ...mappedExternal];
-    }, [schedule, availability, member, externalEvents]);
+    }, [schedule, availability, currentUser, externalEvents]);
 
     const isMonthLocked = useMemo(() => {
         if (isAdmin) return false; // Admins are never locked out
@@ -161,6 +166,7 @@ const Calendar = () => {
             // We still allow selection to view details, but we'll show a lock notice in the modal
         }
         setSelectedEvent(event);
+        setIsEditingAssignments(false);
         setIsAvailable(!event.optedOut);
     };
 
@@ -229,15 +235,42 @@ const Calendar = () => {
     };
 
     const handleGenerateSchedule = (month, year) => {
-        dispatch(generateSchedule({ year, month, token }));
-        setIsGenerateModalOpen(false);
+        dispatch(generateSchedule({ year, month, token }))
+            .unwrap()
+            .then(() => {
+                setIsGenerateModalOpen(false);
+                setIsSummaryModalOpen(true);
+            })
+            .catch(err => alert("Generation failed: " + err));
     };
 
     const handleSaveSchedule = () => {
         dispatch(saveSchedule({ scheduleData: schedule, token }))
             .unwrap()
-            .then(() => alert("Schedule saved successfully!"))
+            .then(() => {
+                alert("Schedule saved successfully!");
+                setIsSummaryModalOpen(false);
+            })
             .catch(e => alert("Failed to save: " + e));
+    };
+
+    const handleUpdateAssignment = (sessionId, role, memberId) => {
+        const newSessions = schedule.sessions.map(s => {
+            if (s.id === sessionId) {
+                const newAssignments = s.assignments.filter(a => a.role !== role);
+                if (memberId) {
+                    const memberObj = members.find(m => m.id === Number(memberId));
+                    newAssignments.push({
+                        role,
+                        member_id: Number(memberId),
+                        member: memberObj
+                    });
+                }
+                return { ...s, assignments: newAssignments };
+            }
+            return s;
+        });
+        dispatch(setLocalSchedule({ ...schedule, sessions: newSessions }));
     };
 
     const handleExportCSV = async () => {
@@ -371,7 +404,7 @@ const Calendar = () => {
                                     onClick={handleSaveSchedule}
                                     className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition"
                                 >
-                                    Save Draft
+                                    Save Schedule
                                 </button>
                             )}
                             <button
@@ -524,22 +557,140 @@ const Calendar = () => {
                                     )}
                                 </div>
 
-                                {selectedEvent.assignments.length > 0 && (
+                                {isAdmin ? (
                                     <div style={{ marginBottom: '1rem' }}>
-                                        <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#f8fafc' }}>Role Assignments</h3>
-                                        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                            {selectedEvent.assignments.map((a, idx) => (
-                                                <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', padding: '0.25rem 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                                                    <span style={{ color: '#94a3b8', textTransform: 'capitalize' }}>{a.role.replace('_', ' ')}:</span>
-                                                    <span style={{ fontWeight: 500, color: '#f8fafc' }}>{a.member_name}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                            <h3 style={{ fontWeight: 600, color: '#f8fafc', fontSize: '1rem', margin: 0 }}>Role Assignments</h3>
+                                            {!isEditingAssignments && (
+                                                <button 
+                                                    onClick={() => setIsEditingAssignments(true)}
+                                                    style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.2)', padding: '0.35rem 0.75rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                                                >
+                                                    Edit Assignments
+                                                </button>
+                                            )}
+                                        </div>
 
-                                {selectedEvent.assignments.length === 0 && (
-                                    <p style={{ fontSize: '0.875rem', color: '#64748b', fontStyle: 'italic' }}>No roles assigned for this session yet.</p>
+                                        {isEditingAssignments ? (
+                                            <>
+                                                <div style={{ display: 'grid', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    {['lead_singer', 'soprano', 'alto', 'tenor'].map(role => {
+                                                        const assignment = selectedEvent.assignments.find(a => a.role === role);
+                                                        const currentMemberId = assignment?.member_id || '';
+                                                        const sessionAvailability = availability?.sessions?.find(as => as.id === selectedEvent.id);
+                                                        const isMemberUnavailable = currentMemberId && sessionAvailability?.availability?.find(av => av.id === currentMemberId)?.optedOut;
+
+                                                        return (
+                                                            <div key={role} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                                                <label style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 800 }}>{role.replace('_', ' ')}</label>
+                                                                <select
+                                                                    value={currentMemberId}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value;
+                                                                        const newAssignments = selectedEvent.assignments.filter(a => a.role !== role);
+                                                                        if (val) {
+                                                                            const memberObj = members.find(m => m.id === Number(val));
+                                                                            newAssignments.push({
+                                                                                role,
+                                                                                member_id: Number(val),
+                                                                                member_name: `${memberObj.first_name} ${memberObj.last_name}`,
+                                                                                member: memberObj
+                                                                            });
+                                                                        }
+                                                                        setSelectedEvent({ ...selectedEvent, assignments: newAssignments });
+                                                                    }}
+                                                                    style={{ 
+                                                                        background: isMemberUnavailable ? 'rgba(239, 68, 68, 0.15)' : 'rgba(30, 41, 59, 0.5)', 
+                                                                        border: `1px solid ${isMemberUnavailable ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                                                        color: isMemberUnavailable ? '#fca5a5' : '#e2e8f0',
+                                                                        padding: '0.5rem', borderRadius: '8px', fontSize: '0.85rem'
+                                                                    }}
+                                                                >
+                                                                    <option value="">Unassigned</option>
+                                                                    {members.map(m => {
+                                                                        const isUnavailable = sessionAvailability?.availability?.find(av => av.id === m.id)?.optedOut;
+                                                                        return (
+                                                                            <option key={m.id} value={m.id} style={{ background: '#0f172a', color: 'white' }}>
+                                                                                {m.first_name} {m.last_name} {isUnavailable ? ' (Unavailable)' : ''}
+                                                                            </option>
+                                                                        );
+                                                                    })}
+                                                                </select>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                                                    <button 
+                                                        onClick={() => setIsEditingAssignments(false)}
+                                                        style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: '#94a3b8', border: 'none', padding: '0.75rem', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const sessionData = {
+                                                                session_id: selectedEvent.id,
+                                                                session_title: selectedEvent.title,
+                                                                session_date: selectedEvent.start.toISOString().split('T')[0],
+                                                                assignments: selectedEvent.assignments.map(a => ({
+                                                                    member_id: a.member_id,
+                                                                    member_name: a.member_name,
+                                                                    role: a.role
+                                                                }))
+                                                            };
+                                                            dispatch(saveSchedule({ scheduleData: { sessions: [sessionData] }, token }))
+                                                                .unwrap()
+                                                                .then(() => {
+                                                                    alert("Assignments updated!");
+                                                                    setIsEditingAssignments(false);
+                                                                    const year = currentDate.getFullYear();
+                                                                    const month = currentDate.getMonth() + 1;
+                                                                    dispatch(fetchSchedule({ year, month, token }));
+                                                                })
+                                                                .catch(e => alert("Save failed: " + e));
+                                                        }}
+                                                        style={{ flex: 2, background: '#059669', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
+                                                    >
+                                                        Save Changes
+                                                    </button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                                {selectedEvent.assignments.length > 0 ? (
+                                                    selectedEvent.assignments.map((a, idx) => (
+                                                        <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', padding: '0.35rem 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                                            <span style={{ color: '#94a3b8', textTransform: 'capitalize' }}>{a.role.replace('_', ' ')}:</span>
+                                                            <span style={{ fontWeight: 500, color: '#f8fafc' }}>{a.member_name}</span>
+                                                        </li>
+                                                    ))
+                                                ) : (
+                                                    <p style={{ fontSize: '0.875rem', color: '#64748b', fontStyle: 'italic' }}>No roles assigned for this session yet.</p>
+                                                )}
+                                            </ul>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <>
+                                        {selectedEvent.assignments.length > 0 && (
+                                            <div style={{ marginBottom: '1rem' }}>
+                                                <h3 style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#f8fafc' }}>Role Assignments</h3>
+                                                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                                    {selectedEvent.assignments.map((a, idx) => (
+                                                        <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', padding: '0.25rem 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                                            <span style={{ color: '#94a3b8', textTransform: 'capitalize' }}>{a.role.replace('_', ' ')}:</span>
+                                                            <span style={{ fontWeight: 500, color: '#f8fafc' }}>{a.member_name}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
+
+                                        {selectedEvent.assignments.length === 0 && (
+                                            <p style={{ fontSize: '0.875rem', color: '#64748b', fontStyle: 'italic' }}>No roles assigned for this session yet.</p>
+                                        )}
+                                    </>
                                 )}
                             </>
                         )}
@@ -673,6 +824,116 @@ const Calendar = () => {
                                 className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition shadow-lg shadow-blue-900/40"
                             >
                                 Generate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Generation Summary & Manual Editor Modal */}
+            {isSummaryModalOpen && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, backdropFilter: 'blur(12px)' }}>
+                    <div className="glass-card" style={{ padding: '2rem', width: '95%', maxWidth: '1100px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white">Draft Schedule Summary</h2>
+                                <p className="text-slate-400">Review and fine-tune assignments for {moment().month(generateMonth - 1).format('MMMM')} {generateYear}.</p>
+                            </div>
+                            <button onClick={() => setIsSummaryModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
+                            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 0.5rem' }}>
+                                <thead style={{ position: 'sticky', top: 0, background: '#0f172a', zIndex: 10 }}>
+                                    <tr className="text-left text-slate-400 text-xs uppercase tracking-wider">
+                                        <th className="px-4 py-2">Session</th>
+                                        <th className="px-4 py-2">Lead Singer</th>
+                                        <th className="px-4 py-2">Soprano</th>
+                                        <th className="px-4 py-2">Alto</th>
+                                        <th className="px-4 py-2">Tenor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {schedule?.sessions?.map(session => {
+                                        const roles = ['lead_singer', 'soprano', 'alto', 'tenor'];
+                                        return (
+                                            <tr key={session.id} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                                                <td className="px-4 py-3">
+                                                    <div className="text-white font-semibold text-sm">{moment(session.start_time).format('ddd, MMM D')}</div>
+                                                    <div className="text-slate-500 text-[10px] uppercase font-bold tracking-tighter">{session.type}</div>
+                                                </td>
+                                                {roles.map(role => {
+                                                    const assignment = session.assignments.find(a => a.role === role);
+                                                    const currentMemberId = assignment?.member_id || '';
+                                                    
+                                                    // Check for unavailability from the pre-fetched month availability
+                                                    const sessionAvailability = availability?.sessions?.find(as => as.id === session.id);
+                                                    const isMemberUnavailable = currentMemberId && sessionAvailability?.availability?.find(av => av.id === currentMemberId)?.optedOut;
+
+                                                    return (
+                                                        <td key={role} className="px-2 py-3">
+                                                            <select
+                                                                value={currentMemberId}
+                                                                onChange={(e) => handleUpdateAssignment(session.id, role, e.target.value)}
+                                                                className="transition-all duration-200"
+                                                                style={{ 
+                                                                    background: isMemberUnavailable ? 'rgba(239, 68, 68, 0.15)' : 'rgba(30, 41, 59, 0.5)', 
+                                                                    border: `1px solid ${isMemberUnavailable ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                                                    color: isMemberUnavailable ? '#fca5a5' : '#e2e8f0',
+                                                                    width: '100%', 
+                                                                    padding: '0.4rem 0.5rem', 
+                                                                    borderRadius: '6px',
+                                                                    fontSize: '0.8rem',
+                                                                    fontWeight: isMemberUnavailable ? '600' : '400',
+                                                                    outline: 'none'
+                                                                }}
+                                                            >
+                                                                <option value="">Unassigned</option>
+                                                                {members.map(m => {
+                                                                    const isUnavailable = sessionAvailability?.availability?.find(av => av.id === m.id)?.optedOut;
+                                                                    return (
+                                                                        <option key={m.id} value={m.id} style={{ background: '#0f172a', color: 'white' }}>
+                                                                            {m.first_name} {m.last_name} {isUnavailable ? ' (Unavailable)' : ''}
+                                                                        </option>
+                                                                    );
+                                                                })}
+                                                            </select>
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="mt-8 flex gap-4 pt-6 border-t border-white/5">
+                            <button 
+                                onClick={() => {
+                                    if (window.confirm("Discard all draft assignments? This will reset to the currently saved schedule.")) {
+                                        setIsSummaryModalOpen(false);
+                                        const year = currentDate.getFullYear();
+                                        const month = currentDate.getMonth() + 1;
+                                        dispatch(fetchSchedule({ year, month, token }));
+                                    }
+                                }}
+                                className="px-6 py-3 rounded-xl font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+                            >
+                                Discard Draft
+                            </button>
+                            <div className="flex-1" />
+                            <div className="flex items-center text-slate-500 text-xs gap-2 mr-4 bg-slate-800/40 px-3 py-2 rounded-lg">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Draft Mode Active
+                            </div>
+                            <button 
+                                onClick={handleSaveSchedule}
+                                className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition shadow-lg shadow-emerald-900/20 active:scale-95"
+                            >
+                                Save & Publish Schedule
                             </button>
                         </div>
                     </div>
