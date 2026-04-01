@@ -41,6 +41,22 @@ const Calendar = () => {
 
     const isAdmin = currentUser?.permissions?.includes('admin') || currentUser?.roles?.includes('admin');
     const [choirRoles, setChoirRoles] = useState(['lead_singer', 'soprano', 'alto', 'tenor']);
+    const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const jsDayInit = new Date(todayStr + 'T00:00:00').getDay();
+    const initDayOfWeek = jsDayInit === 0 ? 6 : jsDayInit - 1;
+
+    const [templates, setTemplates] = useState([]);
+    const [deletingTemplateId, setDeletingTemplateId] = useState(null);
+    const [newTemplate, setNewTemplate] = useState({
+        title: 'Weekly Rehearsal',
+        type: 'rehearsal',
+        frequency: 'weekly',
+        reference_start_date: todayStr,
+        day_of_week: initDayOfWeek,
+        start_time: '18:00:00',
+        duration_minutes: 120
+    });
 
     // Custom Date Header component for checkboxes
     const CustomDateHeader = ({ label, date }) => {
@@ -105,6 +121,13 @@ const Calendar = () => {
                         setChoirRoles(res.data.choir_roles);
                     }
                 }).catch(err => console.error("Failed to fetch choir roles", err));
+
+                // Fetch session templates
+                axios.get(`${API_URL}/session-templates/`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).then(res => {
+                    setTemplates(res.data);
+                }).catch(err => console.error("Failed to fetch templates", err));
             }
             dispatch(fetchSchedule({ year, month, token }));
             dispatch(fetchUnavailableDays({ year, month, token }));
@@ -413,13 +436,21 @@ const Calendar = () => {
                             >
                                 Auto-Generate
                             </button>
+                            <button
+                                onClick={() => setIsRecurringModalOpen(true)}
+                                style={{ flex: '1 1 auto', minWidth: '130px', textAlign: 'center' }}
+                                className="bg-amber-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-amber-900/40 hover:bg-amber-700 transition font-medium text-sm flex items-center justify-center gap-2"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                Recurring
+                            </button>
                             {schedule?.sessions?.length > 0 && (
                                 <button
                                     onClick={handleSaveSchedule}
                                     style={{ flex: '1 1 auto', minWidth: '100px', textAlign: 'center' }}
                                     className="bg-green-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-emerald-900/40 hover:bg-green-700 transition font-medium text-sm"
                                 >
-                                    Save Draft
+                                    Save Schedule
                                 </button>
                             )}
                             <button
@@ -954,6 +985,209 @@ const Calendar = () => {
                                 Save & Publish Schedule
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Recurring Sessions Modal */}
+            {isRecurringModalOpen && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                    <div style={{ background: '#1e293b', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)', width: '100%', maxWidth: '500px', border: '1px solid rgba(255,255,255,0.1)', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <div>
+                                <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: '#f8fafc' }}>Recurring Sessions</h2>
+                                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Automate your weekly rehearsals and services</p>
+                            </div>
+                            <button onClick={() => setIsRecurringModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
+                        </div>
+
+                        {/* Template List */}
+                        <div style={{ marginBottom: '2rem' }}>
+                            <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>Active Templates</h3>
+                            {templates.length === 0 ? (
+                                <p style={{ fontSize: '0.9rem', color: '#64748b', textAlign: 'center', py: '1rem' }}>No recurring templates defined yet.</p>
+                            ) : (
+                                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                                    {templates.map(t => (
+                                        <div key={t.id} style={{ background: 'rgba(255,255,255,0.03)', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <div style={{ fontWeight: 600, color: '#f8fafc', fontSize: '0.95rem' }}>{t.title}</div>
+                                                    <span style={{ 
+                                                        fontSize: '0.65rem', 
+                                                        padding: '0.1rem 0.4rem', 
+                                                        borderRadius: '6px', 
+                                                        background: t.type === 'program' ? 'rgba(79, 70, 229, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                                        color: t.type === 'program' ? '#818cf8' : '#fbbf24',
+                                                        border: `1px solid ${t.type === 'program' ? 'rgba(79, 70, 229, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
+                                                    }}>
+                                                        {t.type}
+                                                    </span>
+                                                </div>
+                                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'capitalize' }}>
+                                                    {t.frequency === 'daily' ? (
+                                                        `Daily at ${t.start_time.substring(0, 5)}`
+                                                    ) : (
+                                                        `${t.frequency || 'Weekly'} on ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][t.day_of_week]} at ${t.start_time.substring(0, 5)}`
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {deletingTemplateId === t.id ? (
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button 
+                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingTemplateId(null); }}
+                                                        style={{ background: 'rgba(255,255,255,0.1)', color: '#f8fafc', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem' }}
+                                                    >Cancel</button>
+                                                    <button 
+                                                        onClick={async (e) => {
+                                                            e.preventDefault(); e.stopPropagation();
+                                                            try {
+                                                                await axios.delete(`${API_URL}/session-templates/${t.id}`, { headers: { Authorization: `Bearer ${token}` } });
+                                                                setTemplates(prev => prev.filter(temp => temp.id !== t.id));
+                                                                setDeletingTemplateId(null);
+                                                            } catch (err) { alert("Failed to delete: " + err.message); }
+                                                        }}
+                                                        style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                                                    >Delete</button>
+                                                </div>
+                                            ) : (
+                                                <button 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingTemplateId(t.id); }}
+                                                    style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: 'none', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer' }}
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Add Template Form */}
+                        <div style={{ background: 'rgba(99, 102, 241, 0.05)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(99, 102, 241, 0.1)', marginBottom: '1.5rem' }}>
+                            <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#f8fafc', marginBottom: '1rem' }}>Create New Template</h3>
+                            <div style={{ display: 'grid', gap: '1rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>Template Title</span>
+                                        <input 
+                                            placeholder="e.g. Sunday Service" 
+                                            value={newTemplate.title} 
+                                            onChange={e => setNewTemplate({...newTemplate, title: e.target.value})}
+                                            style={{ width: '100%', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem', borderRadius: '8px' }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>Session Type</span>
+                                        <select 
+                                            value={newTemplate.type} 
+                                            onChange={e => setNewTemplate({...newTemplate, type: e.target.value})}
+                                            style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem', borderRadius: '8px' }}
+                                        >
+                                            <option value="rehearsal">Rehearsal</option>
+                                            <option value="program">Program</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>Frequency</span>
+                                        <select 
+                                            value={newTemplate.frequency} 
+                                            onChange={e => setNewTemplate({...newTemplate, frequency: e.target.value})}
+                                            style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem', borderRadius: '8px' }}
+                                        >
+                                            <option value="daily">Daily</option>
+                                            <option value="weekly">Weekly</option>
+                                            <option value="bi-weekly">Bi-Weekly</option>
+                                            <option value="monthly">Monthly</option>
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>Reference Start Date</span>
+                                        <input 
+                                            type="date" 
+                                            value={newTemplate.reference_start_date} 
+                                            onChange={e => {
+                                                const newDateStr = e.target.value;
+                                                const dateObj = new Date(newDateStr + 'T00:00:00'); // Parse explicitly as local time to avoid timezone shifts
+                                                let newDayOfWeek = newTemplate.day_of_week;
+                                                if (!isNaN(dateObj.getTime())) {
+                                                    const jsDay = dateObj.getDay(); // 0 is Sun, 6 is Sat
+                                                    newDayOfWeek = jsDay === 0 ? 6 : jsDay - 1; // Backend: 0 is Mon, 6 is Sun
+                                                }
+                                                setNewTemplate({...newTemplate, reference_start_date: newDateStr, day_of_week: newDayOfWeek});
+                                            }}
+                                            style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem', borderRadius: '8px', colorScheme: 'dark' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>Inferred Day of Week</span>
+                                        <select 
+                                            value={newTemplate.day_of_week} 
+                                            disabled={true}
+                                            style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem', borderRadius: '8px', opacity: 0.5, cursor: 'not-allowed' }}
+                                        >
+                                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((d, i) => (
+                                                <option key={i} value={i}>{d}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>Start Time</span>
+                                        <input 
+                                            type="time" 
+                                            value={newTemplate.start_time.substring(0, 5)} 
+                                            onChange={e => setNewTemplate({...newTemplate, start_time: e.target.value + ':00'})}
+                                            style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem', borderRadius: '8px', colorScheme: 'dark' }}
+                                        />
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={async () => {
+                                        try {
+                                            const res = await axios.post(`${API_URL}/session-templates/`, newTemplate, { headers: { Authorization: `Bearer ${token}` } });
+                                            setTemplates([...templates, res.data]);
+                                            const currentTodayStr = new Date().toISOString().split('T')[0];
+                                            const currentJsDay = new Date(currentTodayStr + 'T00:00:00').getDay();
+                                            const currentInitDayOfWeek = currentJsDay === 0 ? 6 : currentJsDay - 1;
+                                            setNewTemplate({ title: '', type: 'rehearsal', frequency: 'weekly', reference_start_date: currentTodayStr, day_of_week: currentInitDayOfWeek, start_time: '18:00:00', duration_minutes: 120 });                                        } catch (e) { alert("Failed to add template"); }
+                                    }}
+                                    style={{ background: '#6366f1', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
+                                >
+                                    Add Template
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Generation Action */}
+                        <button 
+                            disabled={templates.length === 0}
+                            onClick={async () => {
+                                try {
+                                    const year = currentDate.getFullYear();
+                                    const month = currentDate.getMonth() + 1;
+                                    const lastDay = new Date(year, month, 0).getDate();
+                                    const start_date = `${year}-${String(month).padStart(2, '0')}-01`;
+                                    const end_date = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+                                    const res = await axios.post(`${API_URL}/session-templates/generate`, { start_date, end_date }, { headers: { Authorization: `Bearer ${token}` } });
+                                    alert(`Generated ${res.data.length} sessions for ${currentDate.toLocaleString('default', { month: 'long' })}!`);
+                                    dispatch(fetchSchedule({ year, month, token }));
+                                    setIsRecurringModalOpen(false);
+                                } catch (e) { alert("Generation failed: " + (e.response?.data?.detail || e.message)); }
+                            }}
+                            style={{ 
+                                width: '100%', padding: '1rem', borderRadius: '12px', fontWeight: 700, cursor: 'pointer',
+                                background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                                color: 'white', border: 'none', boxShadow: '0 4px 15px rgba(16,185,129,0.3)',
+                                opacity: templates.length === 0 ? 0.5 : 1
+                            }}
+                        >
+                            Generate Sessions for {currentDate.toLocaleString('default', { month: 'long' })}
+                        </button>
                     </div>
                 </div>
             )}
