@@ -25,6 +25,8 @@ function Sessions() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
     const [selected, setSelected] = useState(new Set());
     const [availableTypes, setAvailableTypes] = useState(['rehearsal', 'program']);
     const [availableStatuses, setAvailableStatuses] = useState(['scheduled', 'active', 'concluded', 'archived']);
@@ -54,7 +56,18 @@ function Sessions() {
     const [deleteLoading, setDeleteLoading] = useState(false);
 
     useEffect(() => {
-        dispatch(fetchSessions());
+        const params = {};
+        if (startDate) params.start_date = startDate.toISOString();
+        if (endDate) {
+            // Set end date to end of day to include all sessions on that day
+            const endOfDay = new Date(endDate);
+            endOfDay.setHours(23, 59, 59, 999);
+            params.end_date = endOfDay.toISOString();
+        }
+        dispatch(fetchSessions(params));
+    }, [dispatch, startDate, endDate]);
+
+    useEffect(() => {
         dispatch(fetchMembers());
 
         const fetchMetadata = async () => {
@@ -338,6 +351,39 @@ function Sessions() {
                                 {f}
                             </button>
                         ))}
+                    </div>
+
+                    {/* Date Range Filter */}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0.4rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>From:</span>
+                        <DatePicker
+                            selected={startDate}
+                            onChange={(date) => setStartDate(date)}
+                            placeholderText="Start Date"
+                            className="date-picker-input-small"
+                            wrapperClassName="date-picker-wrapper-small"
+                            dateFormat="MMM d, yyyy"
+                            isClearable
+                        />
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>To:</span>
+                        <DatePicker
+                            selected={endDate}
+                            onChange={(date) => setEndDate(date)}
+                            placeholderText="End Date"
+                            className="date-picker-input-small"
+                            wrapperClassName="date-picker-wrapper-small"
+                            dateFormat="MMM d, yyyy"
+                            isClearable
+                        />
+                        {(startDate || endDate) && (
+                            <button 
+                                className="btn" 
+                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)' }}
+                                onClick={() => { setStartDate(null); setEndDate(null); }}
+                            >
+                                Reset
+                            </button>
+                        )}
                     </div>
                 </div>
 

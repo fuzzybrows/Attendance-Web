@@ -2,8 +2,8 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import logger from '../utils/logger';
 
-export const fetchSessions = createAsyncThunk('sessions/fetchSessions', async () => {
-    const response = await axios.get('/sessions/');
+export const fetchSessions = createAsyncThunk('sessions/fetchSessions', async (params) => {
+    const response = await axios.get('/sessions/', { params });
     return response.data;
 });
 

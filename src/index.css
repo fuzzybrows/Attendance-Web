@@ -240,6 +240,21 @@ select {
   width: 100%;
 }
 
+.date-picker-input-small {
+  background: rgba(15, 23, 42, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: white !important;
+  padding: 0.4rem 0.6rem !important;
+  border-radius: 0.5rem !important;
+  font-size: 0.85rem !important;
+  width: 130px !important;
+  cursor: pointer;
+}
+
+.date-picker-wrapper-small {
+  width: auto;
+}
+
 .react-datepicker {
   background-color: var(--card-bg) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
