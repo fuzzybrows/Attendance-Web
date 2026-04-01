@@ -508,6 +508,7 @@ function Sessions() {
                     isOpen={isAddModalOpen}
                     onClose={() => setIsAddModalOpen(false)}
                     onSubmit={handleAddSession}
+                    hideFooter
                 >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <div>
@@ -570,6 +571,7 @@ function Sessions() {
                         setIsEditMode(false);
                     }}
                     onSubmit={isEditMode ? handleUpdateSession : undefined}
+                    hideFooter
                 >
                     {!isEditMode ? (
                         <div>
