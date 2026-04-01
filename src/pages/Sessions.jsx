@@ -25,11 +25,16 @@ function Sessions() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [typeFilter, setTypeFilter] = useState('all');
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
     const [selected, setSelected] = useState(new Set());
     const [availableTypes, setAvailableTypes] = useState(['rehearsal', 'program']);
     const [availableStatuses, setAvailableStatuses] = useState(['scheduled', 'active', 'concluded', 'archived']);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
 
     // Add Session Modal State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -66,6 +71,11 @@ function Sessions() {
         }
         dispatch(fetchSessions(params));
     }, [dispatch, startDate, endDate]);
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, statusFilter, typeFilter, startDate, endDate]);
 
     useEffect(() => {
         dispatch(fetchMembers());
@@ -104,14 +114,32 @@ function Sessions() {
 
     const filtered = sessions
         .filter(fuzzyMatch)
-        .filter(s => statusFilter === 'all' || (s.status || 'active') === statusFilter);
+        .filter(s => statusFilter === 'all' || (s.status || 'active') === statusFilter)
+        .filter(s => typeFilter === 'all' || s.type === typeFilter);
+
+    const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
+    const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+    const paginatedFiltered = filtered.slice((validCurrentPage - 1) * ITEMS_PER_PAGE, validCurrentPage * ITEMS_PER_PAGE);
 
     const grouped = {
-        scheduled: filtered.filter(s => s.status === 'scheduled'),
-        active: filtered.filter(s => (s.status || 'active') === 'active'),
-        concluded: filtered.filter(s => s.status === 'concluded'),
-        archived: filtered.filter(s => s.status === 'archived'),
+        scheduled: paginatedFiltered.filter(s => s.status === 'scheduled'),
+        active: paginatedFiltered.filter(s => (s.status || 'active') === 'active'),
+        concluded: paginatedFiltered.filter(s => s.status === 'concluded'),
+        archived: paginatedFiltered.filter(s => s.status === 'archived'),
     };
+
+    const handleSelectAll = (e) => {
+        const nextSelected = new Set(selected);
+        if (e.target.checked) {
+            paginatedFiltered.forEach(s => nextSelected.add(s.id));
+        } else {
+            paginatedFiltered.forEach(s => nextSelected.delete(s.id));
+        }
+        setSelected(nextSelected);
+    };
+    
+    // Check if all paginated are selected
+    const isAllSelected = paginatedFiltered.length > 0 && paginatedFiltered.every(s => selected.has(s.id));
 
     const handleStatusChange = (sessionId, newStatus) => {
         dispatch(updateSessionStatus({ id: sessionId, status: newStatus }));
@@ -244,7 +272,7 @@ function Sessions() {
                     }}
                         onClick={() => handleViewSession(s)}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <input
                                 type="checkbox"
                                 checked={selected.has(s.id)}
@@ -256,11 +284,11 @@ function Sessions() {
                                     setSelected(next);
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                style={{ accentColor: '#818cf8' }}
+                                style={{ accentColor: '#818cf8', margin: 0, width: '18px', height: '18px', flexShrink: 0 }}
                             />
-                            <div>
-                                <strong>{s.title}</strong><br />
-                                <small style={{ color: 'var(--text-secondary)' }}>{new Date(s.start_time).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</small>
+                            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                <strong style={{ lineHeight: '1.2' }}>{s.title}</strong>
+                                <small style={{ color: 'var(--text-secondary)', lineHeight: '1.2', marginTop: '0.2rem' }}>{new Date(s.start_time).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</small>
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -296,94 +324,127 @@ function Sessions() {
     return (
         <>
             <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
-                <div className="flex-between" style={{ marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                    <h2 style={{ margin: 0 }}>All Sessions</h2>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                        <button
-                            className="btn"
-                            style={{ background: 'var(--primary-color)', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                            onClick={() => setIsAddModalOpen(true)}
-                        >
-                            + Add Session
-                        </button>
-                        {selected.size > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '1.5rem' }}>
+                    
+                    {/* Top Row: Title, Select All, Add, Delete */}
+                    <div className="flex-between" style={{ flexWrap: 'wrap', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                            <h2 style={{ margin: 0 }}>All Sessions</h2>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={isAllSelected}
+                                    onChange={handleSelectAll}
+                                    style={{ margin: 0, width: '18px', height: '18px', accentColor: '#818cf8' }}
+                                />
+                                Select all
+                            </label>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             <button
                                 className="btn"
-                                style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                                onClick={requestBulkDelete}
+                                style={{ background: 'var(--primary-color)', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                                onClick={() => setIsAddModalOpen(true)}
                             >
-                                🗑️ Delete {selected.size} selected
+                                + Add Session
                             </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Search & Filter Bar */}
-                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                    <input
-                        type="text"
-                        placeholder="🔍 Search sessions by title, type, or status..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        style={{
-                            flex: 1, minWidth: '200px', padding: '0.6rem 1rem', borderRadius: '10px',
-                            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
-                            color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none',
-                            transition: 'border-color 0.2s ease'
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = 'rgba(129, 140, 248, 0.5)'}
-                        onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
-                    />
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        {['all', ...availableStatuses].map(f => (
-                            <button
-                                key={f}
-                                className="btn"
-                                onClick={() => setStatusFilter(f)}
-                                style={{
-                                    padding: '0.4rem 0.8rem', fontSize: '0.8rem',
-                                    background: statusFilter === f ? 'rgba(129, 140, 248, 0.2)' : 'rgba(255,255,255,0.05)',
-                                    border: statusFilter === f ? '1px solid rgba(129, 140, 248, 0.4)' : '1px solid rgba(255,255,255,0.15)',
-                                    color: statusFilter === f ? '#818cf8' : 'var(--text-secondary)',
-                                    borderRadius: '8px', textTransform: 'capitalize'
-                                }}
-                            >
-                                {f}
-                            </button>
-                        ))}
+                            {selected.size > 0 && (
+                                <button
+                                    className="btn"
+                                    style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                                    onClick={requestBulkDelete}
+                                >
+                                    🗑️ Delete {selected.size} selected
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Date Range Filter */}
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0.4rem 0.75rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)' }}>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>From:</span>
-                        <DatePicker
-                            selected={startDate}
-                            onChange={(date) => setStartDate(date)}
-                            placeholderText="Start Date"
-                            className="date-picker-input-small"
-                            wrapperClassName="date-picker-wrapper-small"
-                            dateFormat="MMM d, yyyy"
-                            isClearable
+                    {/* Filter Row */}
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input
+                            type="text"
+                            placeholder="🔍 Search sessions..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{
+                                flex: 1, minWidth: '200px', padding: '0.4rem 1rem', borderRadius: '10px',
+                                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
+                                color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none',
+                                transition: 'border-color 0.2s ease', height: '38px', margin: 0
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = 'rgba(129, 140, 248, 0.5)'}
+                            onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
                         />
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>To:</span>
-                        <DatePicker
-                            selected={endDate}
-                            onChange={(date) => setEndDate(date)}
-                            placeholderText="End Date"
-                            className="date-picker-input-small"
-                            wrapperClassName="date-picker-wrapper-small"
-                            dateFormat="MMM d, yyyy"
-                            isClearable
-                        />
-                        {(startDate || endDate) && (
-                            <button 
-                                className="btn" 
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)' }}
-                                onClick={() => { setStartDate(null); setEndDate(null); }}
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                            {['all', ...availableStatuses].map(f => (
+                                <button
+                                    key={f}
+                                    className="btn"
+                                    onClick={() => setStatusFilter(f)}
+                                    style={{
+                                        padding: '0.4rem 0.8rem', fontSize: '0.8rem', height: '38px',
+                                        background: statusFilter === f ? 'rgba(129, 140, 248, 0.2)' : 'rgba(255,255,255,0.05)',
+                                        border: statusFilter === f ? '1px solid rgba(129, 140, 248, 0.4)' : '1px solid rgba(255,255,255,0.15)',
+                                        color: statusFilter === f ? '#818cf8' : 'var(--text-secondary)',
+                                        borderRadius: '8px', textTransform: 'capitalize', display: 'flex', alignItems: 'center'
+                                    }}
+                                >
+                                    {f}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Type Filter */}
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0 0.75rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', height: '38px' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Type:</span>
+                            <select
+                                className="input-field"
+                                value={typeFilter}
+                                onChange={(e) => setTypeFilter(e.target.value)}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0', cursor: 'pointer', outline: 'none', fontSize: '0.85rem', textTransform: 'capitalize' }}
                             >
-                                Reset
-                            </button>
-                        )}
+                                <option value="all" style={{ background: '#1e1b4b' }}>All Types</option>
+                                {availableTypes.map(type => (
+                                    <option key={type} value={type} style={{ background: '#1e1b4b' }}>
+                                        {type}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Date Range Filter */}
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0 0.75rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', height: '38px' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>From:</span>
+                            <DatePicker
+                                selected={startDate}
+                                onChange={(date) => setStartDate(date)}
+                                placeholderText="Start Date"
+                                className="date-picker-input-small"
+                                wrapperClassName="date-picker-wrapper-small"
+                                dateFormat="MMM d, yyyy"
+                                isClearable
+                            />
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>To:</span>
+                            <DatePicker
+                                selected={endDate}
+                                onChange={(date) => setEndDate(date)}
+                                placeholderText="End Date"
+                                className="date-picker-input-small"
+                                wrapperClassName="date-picker-wrapper-small"
+                                dateFormat="MMM d, yyyy"
+                                isClearable
+                            />
+                            {(startDate || endDate) && (
+                                <button 
+                                    className="btn" 
+                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)' }}
+                                    onClick={() => { setStartDate(null); setEndDate(null); }}
+                                >
+                                    Reset
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -397,6 +458,41 @@ function Sessions() {
                         {renderGroup('🟢 Active', grouped.active, 'active')}
                         {renderGroup('🟡 Concluded', grouped.concluded, 'concluded')}
                         {renderGroup('⚪ Archived', grouped.archived, 'archived')}
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '2rem', padding: '1rem 0', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                <button
+                                    className="btn"
+                                    disabled={validCurrentPage === 1}
+                                    onClick={() => setCurrentPage(validCurrentPage - 1)}
+                                    style={{
+                                        background: validCurrentPage === 1 ? 'rgba(255,255,255,0.05)' : 'rgba(129, 140, 248, 0.2)',
+                                        color: validCurrentPage === 1 ? 'var(--text-secondary)' : '#818cf8',
+                                        border: validCurrentPage === 1 ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(129, 140, 248, 0.4)',
+                                        padding: '0.4rem 1rem', borderRadius: '8px', cursor: validCurrentPage === 1 ? 'not-allowed' : 'pointer', fontSize: '0.9rem', width: '100px'
+                                    }}
+                                >
+                                    Previous
+                                </button>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', minWidth: '80px', textAlign: 'center' }}>
+                                    Page {validCurrentPage} of {totalPages}
+                                </span>
+                                <button
+                                    className="btn"
+                                    disabled={validCurrentPage === totalPages}
+                                    onClick={() => setCurrentPage(validCurrentPage + 1)}
+                                    style={{
+                                        background: validCurrentPage === totalPages ? 'rgba(255,255,255,0.05)' : 'rgba(129, 140, 248, 0.2)',
+                                        color: validCurrentPage === totalPages ? 'var(--text-secondary)' : '#818cf8',
+                                        border: validCurrentPage === totalPages ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(129, 140, 248, 0.4)',
+                                        padding: '0.4rem 1rem', borderRadius: '8px', cursor: validCurrentPage === totalPages ? 'not-allowed' : 'pointer', fontSize: '0.9rem', width: '100px'
+                                    }}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
