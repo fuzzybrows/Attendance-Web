@@ -40,6 +40,7 @@ const Calendar = () => {
     const [generateYear, setGenerateYear] = useState(new Date().getFullYear());
 
     const isAdmin = currentUser?.permissions?.includes('admin') || currentUser?.roles?.includes('admin');
+    const [choirRoles, setChoirRoles] = useState(['lead_singer', 'soprano', 'alto', 'tenor']);
 
     // Custom Date Header component for checkboxes
     const CustomDateHeader = ({ label, date }) => {
@@ -95,6 +96,15 @@ const Calendar = () => {
             if (isAdmin) {
                 dispatch(fetchMonthAvailability({ year, month, token }));
                 dispatch(fetchMembers());
+                
+                // Fetch choir roles for dynamic UI
+                axios.get(`${API_URL}/members/metadata`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).then(res => {
+                    if (res.data.choir_roles?.length > 0) {
+                        setChoirRoles(res.data.choir_roles);
+                    }
+                }).catch(err => console.error("Failed to fetch choir roles", err));
             }
             dispatch(fetchSchedule({ year, month, token }));
             dispatch(fetchUnavailableDays({ year, month, token }));
@@ -582,7 +592,7 @@ const Calendar = () => {
                                         {isEditingAssignments ? (
                                             <>
                                                 <div style={{ display: 'grid', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                    {['lead_singer', 'soprano', 'alto', 'tenor'].map(role => {
+                                                    {choirRoles.map(role => {
                                                         const assignment = selectedEvent.assignments.find(a => a.role === role);
                                                         const currentMemberId = assignment?.member_id || '';
                                                         const sessionAvailability = availability?.sessions?.find(as => as.id === selectedEvent.id);
@@ -865,7 +875,7 @@ const Calendar = () => {
                                 </thead>
                                 <tbody>
                                     {schedule?.sessions?.map(session => {
-                                        const roles = ['lead_singer', 'soprano', 'alto', 'tenor'];
+                                        const roles = choirRoles;
                                         return (
                                             <tr key={session.id} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
                                                 <td className="px-4 py-3">
