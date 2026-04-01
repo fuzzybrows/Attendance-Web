@@ -42,7 +42,8 @@ function Sessions() {
         title: '',
         type: 'rehearsal',
         status: 'scheduled',
-        start_time: new Date()
+        start_time: new Date(),
+        end_time: new Date(Date.now() + 2 * 60 * 60 * 1000)
     });
 
     // View/Edit Modal State
@@ -187,7 +188,8 @@ function Sessions() {
         setIsEditMode(false);
         setEditSessionData({
             ...session,
-            start_time: session.start_time ? new Date(session.start_time) : new Date()
+            start_time: session.start_time ? new Date(session.start_time) : new Date(),
+            end_time: session.end_time ? new Date(session.end_time) : new Date(Date.now() + 2 * 60 * 60 * 1000)
         });
         
         setAssignmentsLoading(true);
@@ -230,6 +232,7 @@ function Sessions() {
             type: editSessionData.type,
             status: editSessionData.status,
             start_time: editSessionData.start_time.toISOString(),
+            end_time: editSessionData.end_time.toISOString(),
         };
         dispatch(updateSession({ id: viewSession.id, data: payload }));
         setIsEditMode(false);
@@ -245,10 +248,11 @@ function Sessions() {
             ...newSessionData,
             title: newSessionData.title.trim(),
             start_time: newSessionData.start_time.toISOString(),
+            end_time: newSessionData.end_time.toISOString(),
         };
         dispatch(addSession(payload));
         setIsAddModalOpen(false);
-        setNewSessionData({ title: '', type: 'rehearsal', status: 'scheduled', start_time: new Date() });
+        setNewSessionData({ title: '', type: 'rehearsal', status: 'scheduled', start_time: new Date(), end_time: new Date(Date.now() + 2 * 60 * 60 * 1000) });
     };
 
     const renderGroup = (title, items, statusKey) => {
@@ -522,6 +526,17 @@ function Sessions() {
                             />
                         </div>
                         <div>
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled End Time</label>
+                            <DatePicker
+                                selected={newSessionData.end_time}
+                                onChange={(date) => setNewSessionData({ ...newSessionData, end_time: date })}
+                                showTimeSelect
+                                dateFormat="Pp"
+                                className="date-picker-input"
+                                wrapperClassName="date-picker-wrapper"
+                            />
+                        </div>
+                        <div>
                             <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Session Type</label>
                             <select value={newSessionData.type} onChange={e => setNewSessionData({ ...newSessionData, type: e.target.value })} style={{ width: '100%' }}>
                                 {availableTypes.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
@@ -655,6 +670,17 @@ function Sessions() {
                                 <DatePicker
                                     selected={editSessionData.start_time}
                                     onChange={(date) => setEditSessionData({ ...editSessionData, start_time: date })}
+                                    showTimeSelect
+                                    dateFormat="Pp"
+                                    className="date-picker-input"
+                                    wrapperClassName="date-picker-wrapper"
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled End Time</label>
+                                <DatePicker
+                                    selected={editSessionData.end_time}
+                                    onChange={(date) => setEditSessionData({ ...editSessionData, end_time: date })}
                                     showTimeSelect
                                     dateFormat="Pp"
                                     className="date-picker-input"

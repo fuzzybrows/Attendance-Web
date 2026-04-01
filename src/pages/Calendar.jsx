@@ -52,10 +52,10 @@ const Calendar = () => {
         title: 'Weekly Rehearsal',
         type: 'rehearsal',
         frequency: 'weekly',
-        reference_start_date: todayStr,
-        day_of_week: initDayOfWeek,
+        reference_start_date: currentTodayStr,
+        day_of_week: currentInitDayOfWeek,
         start_time: '18:00:00',
-        duration_minutes: 120
+        end_time: '20:00:00'
     });
 
     // Custom Date Header component for checkboxes
@@ -157,7 +157,8 @@ const Calendar = () => {
         
         const internalEvents = sourceData.map(session => {
             const start = new Date(session.session_date || session.start_time);
-            const end = new Date(start.getTime() + 3 * 60 * 60 * 1000); // add 3 hrs for UI bounds
+            const fallbackEnd = new Date(start.getTime() + 3 * 60 * 60 * 1000); // 3 hr fallback
+            const end = session.end_time ? new Date(session.end_time) : fallbackEnd;
 
             // Check if current user is opted out
             const isOptedOut = availability?.sessions?.find(s => s.id === (session.session_id || session.id))?.opted_out_member_ids?.includes(currentUser?.id);
@@ -1144,6 +1145,15 @@ const Calendar = () => {
                                             style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem', borderRadius: '8px', colorScheme: 'dark' }}
                                         />
                                     </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>End Time</span>
+                                        <input 
+                                            type="time" 
+                                            value={(newTemplate.end_time || '20:00:00').substring(0, 5)} 
+                                            onChange={e => setNewTemplate({...newTemplate, end_time: e.target.value + ':00'})}
+                                            style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem', borderRadius: '8px', colorScheme: 'dark' }}
+                                        />
+                                    </div>
                                 </div>
                                 <button 
                                     onClick={async () => {
@@ -1153,7 +1163,8 @@ const Calendar = () => {
                                             const currentTodayStr = new Date().toISOString().split('T')[0];
                                             const currentJsDay = new Date(currentTodayStr + 'T00:00:00').getDay();
                                             const currentInitDayOfWeek = currentJsDay === 0 ? 6 : currentJsDay - 1;
-                                            setNewTemplate({ title: '', type: 'rehearsal', frequency: 'weekly', reference_start_date: currentTodayStr, day_of_week: currentInitDayOfWeek, start_time: '18:00:00', duration_minutes: 120 });                                        } catch (e) { alert("Failed to add template"); }
+                                            setNewTemplate({ title: '', type: 'rehearsal', frequency: 'weekly', reference_start_date: currentTodayStr, day_of_week: currentInitDayOfWeek, start_time: '18:00:00', end_time: '20:00:00' });
+                                        } catch (e) { alert("Failed to add template"); }
                                     }}
                                     style={{ background: '#6366f1', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
                                 >
