@@ -124,22 +124,47 @@ h2 {
   .grid {
     grid-template-columns: 1fr;
   }
-
+  
   .desktop-menu {
     display: none !important;
   }
-
+  
   .mobile-menu-btn {
     display: block !important;
   }
-
+  
   .container {
-    padding: 0 1rem;
-    width: 95%;
+    padding: 0 0.5rem;
+    width: 100%;
   }
-
+  
   .glass-card {
-    padding: 1.25rem;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1rem;
+  }
+}
+
+/* Mobile-only card view for tables */
+.mobile-card-list {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .desktop-only-table {
+    display: none;
+  }
+  .mobile-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .mobile-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1rem;
+    position: relative;
   }
 }
 
@@ -279,6 +304,20 @@ select {
   min-height: 500px;
 }
 
+.calendar-container {
+    height: 75vh;
+    min-height: 600px;
+    padding: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .calendar-container {
+        height: auto;
+        min-height: 450px;
+        padding: 0.75rem;
+    }
+}
+
 .rbc-month-view,
 .rbc-time-view {
   flex: 1 1 0%;
@@ -287,8 +326,13 @@ select {
 
 .rbc-month-row {
   flex-basis: 15% !important;
-  /* Ensure month rows have a forced minimum height basis */
   min-height: 80px;
+}
+
+@media (max-width: 600px) {
+  .rbc-month-row {
+    min-height: 60px !important;
+  }
 }
 
 /* Dark theme for react-big-calendar */

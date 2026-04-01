@@ -143,28 +143,29 @@ function MembersManagement() {
     return (
         <div className="glass-card">
             <div className="flex-between" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <h1 style={{ margin: 0 }}>Member Management</h1>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <h1 style={{ margin: 0, fontSize: 'clamp(1.5rem, 5vw, 2.5rem)' }}>Member Management</h1>
+                <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '500px', flexWrap: 'wrap' }}>
                     <input
                         type="text"
                         placeholder="Search members..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         style={{
-                            padding: '0.5rem 1rem',
-                            borderRadius: '8px',
+                            padding: '0.65rem 1rem',
+                            borderRadius: '10px',
                             border: '1px solid rgba(255, 255, 255, 0.1)',
                             background: 'rgba(255,255,255,0.05)',
                             color: 'var(--text-primary)',
-                            width: '250px',
+                            flex: '1',
+                            minWidth: '200px',
                             marginBottom: 0
                         }}
                     />
-                    <button className="btn" onClick={() => setIsAddModalOpen(true)}>+ Add Member</button>
+                    <button className="btn" style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }} onClick={() => setIsAddModalOpen(true)}>+ Add Member</button>
                 </div>
             </div>
 
-            <div className="table-responsive">
+            <div className="table-responsive desktop-only-table">
                 <table>
                     <thead>
                         <tr>
@@ -203,11 +204,34 @@ function MembersManagement() {
                 </table>
             </div>
 
+            <div className="mobile-card-list">
+                {filteredMembers.map(m => (
+                    <div key={m.id} className="mobile-card">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{m.first_name} {m.last_name}</h3>
+                                <p style={{ margin: '0.25rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{m.email}</p>
+                                {m.phone_number && <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{m.phone_number}</p>}
+                            </div>
+                            <span className={`status-badge ${m.email_verified || m.phone_number_verified ? 'status-manual' : 'status-nfc'}`} style={{ fontSize: '0.65rem' }}>
+                                {m.email_verified || m.phone_number_verified ? 'Verified' : 'Unverified'}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                            {m.roles?.map(r => (
+                                <span key={r} className="status-badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', fontSize: '0.65rem', border: '1px solid rgba(165, 180, 252, 0.2)' }}>{r}</span>
+                            ))}
+                        </div>
+                        <button className="btn" style={{ width: '100%', padding: '0.6rem', fontSize: '0.9rem' }} onClick={() => openEditModal(m)}>Edit Member Details</button>
+                    </div>
+                ))}
+            </div>
+
             {/* Add Member Modal */}
             <Modal title="Add New Member" isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSubmit={handleAddMember}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <input placeholder="First Name" value={newMember.first_name} onChange={e => setNewMember({ ...newMember, first_name: e.target.value })} />
-                    <input placeholder="Last Name" value={newMember.last_name} onChange={e => setNewMember({ ...newMember, last_name: e.target.value })} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                    <input placeholder="First Name" value={newMember.first_name} onChange={e => setNewMember({ ...newMember, first_name: e.target.value })} style={{ marginBottom: 0 }} />
+                    <input placeholder="Last Name" value={newMember.last_name} onChange={e => setNewMember({ ...newMember, last_name: e.target.value })} style={{ marginBottom: 0 }} />
                 </div>
                 <input placeholder="Email Address" value={newMember.email} onChange={e => setNewMember({ ...newMember, email: e.target.value })} />
                 <input placeholder="Phone (e.g. +1234567890)" value={newMember.phone_number} onChange={e => setNewMember({ ...newMember, phone_number: e.target.value })} />
@@ -259,9 +283,9 @@ function MembersManagement() {
             <Modal title="Edit Member" isOpen={isEditModalOpen} onClose={() => { setIsEditModalOpen(false); setEditingMember(null); }} onSubmit={handleUpdateMember}>
                 {editingMember && (
                     <>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                            <input placeholder="First Name" value={editingMember.first_name} onChange={e => setEditingMember({ ...editingMember, first_name: e.target.value })} />
-                            <input placeholder="Last Name" value={editingMember.last_name} onChange={e => setEditingMember({ ...editingMember, last_name: e.target.value })} />
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                            <input placeholder="First Name" value={editingMember.first_name} onChange={e => setEditingMember({ ...editingMember, first_name: e.target.value })} style={{ marginBottom: 0 }} />
+                            <input placeholder="Last Name" value={editingMember.last_name} onChange={e => setEditingMember({ ...editingMember, last_name: e.target.value })} style={{ marginBottom: 0 }} />
                         </div>
                         <input placeholder="Email Address" value={editingMember.email} onChange={e => setEditingMember({ ...editingMember, email: e.target.value })} />
                         <input placeholder="Phone (e.g. +1234567890)" value={editingMember.phone_number} onChange={e => setEditingMember({ ...editingMember, phone_number: e.target.value })} />
