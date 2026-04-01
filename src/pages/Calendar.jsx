@@ -449,6 +449,7 @@ const Calendar = () => {
                     onSelectEvent={handleSelectEvent}
                     onSelectSlot={handleSelectSlot}
                     selectable
+                    longPressThreshold={10}
                     views={['month', 'week', 'day']}
                     components={{
                         month: {
