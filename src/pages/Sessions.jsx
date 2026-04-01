@@ -7,6 +7,7 @@ import Modal from '../components/Modal';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 const statusColors = {
     scheduled: { bg: 'rgba(56, 189, 248, 0.15)', border: 'rgba(56, 189, 248, 0.4)', color: '#38bdf8' },
@@ -220,9 +221,9 @@ function Sessions() {
             await axios.post('/calendar/schedule/save', payload);
             setSessionAssignments(editedAssignments);
             setIsEditingAssignments(false);
-            alert('Assignments saved successfully!');
+            toast.success('Assignments saved successfully!');
         } catch (e) {
-            alert('Failed to save assignments: ' + e);
+            toast.error('Failed to save assignments: ' + e.message);
         }
     };
 
@@ -241,7 +242,7 @@ function Sessions() {
 
     const handleAddSession = () => {
         if (!newSessionData.title.trim()) {
-            alert('Session title is required');
+            toast.error('Session title is required');
             return;
         }
         const payload = {
@@ -580,6 +581,9 @@ function Sessions() {
                             <p><strong>Status:</strong> <span className="status-badge" style={{ background: statusColors[viewSession.status || 'active'].bg, color: statusColors[viewSession.status || 'active'].color }}>{viewSession.status || 'active'}</span></p>
                             <p><strong>Start Time:</strong> {new Date(viewSession.start_time).toLocaleString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</p>
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+                                <button className="btn" style={{ background: 'transparent', border: '1px solid var(--text-secondary)' }} onClick={() => setViewSession(null)}>
+                                    Close
+                                </button>
                                 <button className="btn" style={{ background: 'var(--primary-color)' }} onClick={() => handleViewAttendance(viewSession)}>
                                     View Attendance
                                 </button>

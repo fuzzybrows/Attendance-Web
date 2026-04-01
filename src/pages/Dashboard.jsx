@@ -8,6 +8,7 @@ import Modal from '../components/Modal';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5Qrcode } from 'html5-qrcode';
 
@@ -232,7 +233,7 @@ function Dashboard() {
 
     const handleAddSession = () => {
         if (!newSession.start_time) {
-            alert("Please specify a start time.");
+            toast.error("Please specify a start time.");
             return;
         }
         // Convert Date object to ISO string for the backend
@@ -457,7 +458,7 @@ function Dashboard() {
                                             }}
                                             onClick={() => {
                                                 if ((currentSession.status || 'active') !== 'active') {
-                                                    alert("QR code attendance is disabled because this session is not active.");
+                                                    toast.error("QR code attendance is disabled because this session is not active.");
                                                     return;
                                                 }
                                                 setQrActive(!qrActive);
@@ -595,7 +596,7 @@ function Dashboard() {
                                                 }}
                                                 onClick={() => {
                                                     if ((currentSession.status || 'active') !== 'active') {
-                                                        alert("Manual attendance is disabled because this session is not active.");
+                                                        toast.error("Manual attendance is disabled because this session is not active.");
                                                         return;
                                                     }
                                                     handleMarkAttendance(m.id);

@@ -12,6 +12,7 @@ import MembersManagement from './pages/MembersManagement';
 import Sessions from './pages/Sessions';
 import QRAttendance from './pages/QRAttendance';
 import Calendar from './pages/Calendar';
+import { Toaster } from 'react-hot-toast';
 
 const ProtectedRoute = ({ children, requiredPermission }) => {
   const { token, user } = useSelector(state => state.auth);
@@ -53,6 +54,7 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
+        <Toaster position="top-right" />
         <div className="container">
           <Navigation />
           <Routes>

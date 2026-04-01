@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
 function ResetPassword() {
@@ -17,7 +18,7 @@ function ResetPassword() {
         setError('');
         try {
             const res = await axios.post('/auth/forgot-password', null, { params: { login } });
-            alert(res.data.status);
+            toast.success(res.data.status);
             setStep(2);
         } catch (err) {
             setError(err.response?.data?.detail || 'Request failed');
@@ -32,7 +33,7 @@ function ResetPassword() {
         setError('');
         try {
             await axios.post('/auth/reset-password', { login, otp }, { params: { new_password: newPassword } });
-            alert('Password reset successfully!');
+            toast.success('Password reset successfully!');
             navigate('/login');
         } catch (err) {
             setError(err.response?.data?.detail || 'Reset failed');

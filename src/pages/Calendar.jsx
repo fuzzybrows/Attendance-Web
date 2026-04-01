@@ -16,6 +16,8 @@ import {
 } from '../store/calendarSlice';
 import { fetchMembers } from '../store/membersSlice';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
+import ConfirmModal from '../components/ConfirmModal';
 
 const localizer = momentLocalizer(moment);
 
@@ -52,10 +54,18 @@ const Calendar = () => {
         title: 'Weekly Rehearsal',
         type: 'rehearsal',
         frequency: 'weekly',
-        reference_start_date: currentTodayStr,
-        day_of_week: currentInitDayOfWeek,
+        reference_start_date: todayStr,
+        day_of_week: initDayOfWeek,
         start_time: '18:00:00',
         end_time: '20:00:00'
+    });
+
+    const [confirmState, setConfirmState] = useState({ 
+        isOpen: false, 
+        title: '', 
+        message: '', 
+        onConfirm: () => {},
+        type: 'danger' 
     });
 
     // Custom Date Header component for checkboxes
@@ -139,14 +149,14 @@ const Calendar = () => {
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('google_success')) {
-            alert('Successfully connected to Google Calendar!');
+            toast.success('Successfully connected to Google Calendar!');
             window.history.replaceState({}, document.title, window.location.pathname);
             // Refetch external events
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth() + 1;
             if (token) dispatch(fetchExternalEvents({ year, month, token }));
         } else if (urlParams.has('google_error')) {
-            alert(`Google Calendar connection failed: ${urlParams.get('google_error')}`);
+            toast.error(`Google Calendar connection failed: ${urlParams.get('google_error')}`);
             window.history.replaceState({}, document.title, window.location.pathname);
         }
     }, [token, dispatch, currentDate]);
@@ -215,9 +225,9 @@ const Calendar = () => {
                 const year = currentDate.getFullYear();
                 const month = currentDate.getMonth() + 1;
                 if (isAdmin) dispatch(fetchMonthAvailability({ year, month, token }));
-                alert("Availability updated!");
+                toast.success("Availability updated!");
             })
-            .catch((err) => alert("Failed to update availability: " + err));
+            .catch((err) => toast.error("Failed to update availability: " + err));
     };
 
     const handleSelectSlot = ({ slots, action }) => {
@@ -263,9 +273,9 @@ const Calendar = () => {
             dispatch(fetchSchedule({ year, month, token }));
             dispatch(fetchUnavailableDays({ year, month, token }));
             if (isAdmin) dispatch(fetchMonthAvailability({ year, month, token }));
-            alert(`${count} day(s) marked as ${isAvail ? 'available' : 'unavailable'}.`);
+            toast.success(`${count} day(s) marked as ${isAvail ? 'available' : 'unavailable'}.`);
         })
-        .catch((err) => alert("Failed to update availability: " + err));
+        .catch((err) => toast.error("Failed to update availability: " + err));
     };
 
     const handleGenerateSchedule = (month, year) => {
@@ -275,17 +285,17 @@ const Calendar = () => {
                 setIsGenerateModalOpen(false);
                 setIsSummaryModalOpen(true);
             })
-            .catch(err => alert("Generation failed: " + err));
+            .catch(err => toast.error("Generation failed: " + err));
     };
 
     const handleSaveSchedule = () => {
         dispatch(saveSchedule({ scheduleData: schedule, token }))
             .unwrap()
             .then(() => {
-                alert("Schedule saved successfully!");
+                toast.success("Schedule saved successfully!");
                 setIsSummaryModalOpen(false);
             })
-            .catch(e => alert("Failed to save: " + e));
+            .catch(e => toast.error("Failed to save: " + e));
     };
 
     const handleUpdateAssignment = (sessionId, role, memberId) => {
@@ -323,7 +333,7 @@ const Calendar = () => {
             link.click();
             link.remove();
         } catch (err) {
-            alert("Failed to export CSV: " + (err?.response?.data?.detail || err.message));
+            toast.error("Failed to export CSV: " + (err?.response?.data?.detail || err.message));
         }
     };
 
@@ -343,7 +353,7 @@ const Calendar = () => {
             link.click();
             link.remove();
         } catch (err) {
-            alert("Failed to export PDF: " + (err?.response?.data?.detail || err.message));
+            toast.error("Failed to export PDF: " + (err?.response?.data?.detail || err.message));
         }
     };
 
@@ -357,7 +367,7 @@ const Calendar = () => {
             // The backend returns a relative URL like "/calendar/sync/1.ics?key=..."
             window.open(`${API_URL}${sync_url}`, '_blank');
         } catch (err) {
-            alert("Failed to sync calendar: " + (err?.response?.data?.detail || err.message));
+            toast.error("Failed to sync calendar: " + (err?.response?.data?.detail || err.message));
         }
     };
 
@@ -368,7 +378,7 @@ const Calendar = () => {
             });
             window.location.href = res.data.auth_url;
         } catch (err) {
-            alert("Failed to initiate Google Login: " + (err?.response?.data?.detail || err.message));
+            toast.error("Failed to initiate Google Login: " + (err?.response?.data?.detail || err.message));
         }
     };
 
@@ -575,19 +585,25 @@ const Calendar = () => {
                                         onClick={() => {
                                             if (isMonthLocked) return;
                                             const dayStr = selectedEvent.start.toISOString().split('T')[0];
-                                            if (window.confirm(`Mark ALL sessions on ${dayStr} as unavailable?`)) {
-                                                dispatch(updateDayAvailability({ date: dayStr, isAvailable: false, token }))
-                                                    .unwrap()
-                                                    .then(() => {
-                                                        setSelectedEvent(null);
-                                                        const year = currentDate.getFullYear();
-                                                        const month = currentDate.getMonth() + 1;
-                                                        dispatch(fetchSchedule({ year, month, token }));
-                                                        if (isAdmin) dispatch(fetchMonthAvailability({ year, month, token }));
-                                                        alert(`All sessions on ${dayStr} marked as unavailable.`);
-                                                    })
-                                                    .catch((err) => alert(err));
-                                            }
+                                            setConfirmState({
+                                                isOpen: true,
+                                                title: 'Mark Day Unavailable',
+                                                message: `Mark ALL sessions on ${dayStr} as unavailable?`,
+                                                onConfirm: () => {
+                                                    dispatch(updateDayAvailability({ date: dayStr, isAvailable: false, token }))
+                                                        .unwrap()
+                                                        .then(() => {
+                                                            setSelectedEvent(null);
+                                                            const year = currentDate.getFullYear();
+                                                            const month = currentDate.getMonth() + 1;
+                                                            dispatch(fetchSchedule({ year, month, token }));
+                                                            if (isAdmin) dispatch(fetchMonthAvailability({ year, month, token }));
+                                                            toast.success(`All sessions on ${dayStr} marked as unavailable.`);
+                                                        })
+                                                        .catch((err) => toast.error(err));
+                                                },
+                                                type: 'danger'
+                                            });
                                         }}
                                         disabled={isMonthLocked}
                                         style={{
@@ -692,13 +708,13 @@ const Calendar = () => {
                                                             dispatch(saveSchedule({ scheduleData: { sessions: [sessionData] }, token }))
                                                                 .unwrap()
                                                                 .then(() => {
-                                                                    alert("Assignments updated!");
+                                                                    toast.success("Assignments updated!");
                                                                     setIsEditingAssignments(false);
                                                                     const year = currentDate.getFullYear();
                                                                     const month = currentDate.getMonth() + 1;
                                                                     dispatch(fetchSchedule({ year, month, token }));
                                                                 })
-                                                                .catch(e => alert("Save failed: " + e));
+                                                                .catch(e => toast.error("Save failed: " + e));
                                                         }}
                                                         style={{ flex: 2, background: '#059669', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
                                                     >
@@ -961,19 +977,25 @@ const Calendar = () => {
                         </div>
 
                         <div className="mt-8 flex gap-4 pt-6 border-t border-white/5">
-                            <button 
-                                onClick={() => {
-                                    if (window.confirm("Discard all draft assignments? This will reset to the currently saved schedule.")) {
-                                        setIsSummaryModalOpen(false);
-                                        const year = currentDate.getFullYear();
-                                        const month = currentDate.getMonth() + 1;
-                                        dispatch(fetchSchedule({ year, month, token }));
-                                    }
-                                }}
-                                className="px-6 py-3 rounded-xl font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-all"
-                            >
-                                Discard Draft
-                            </button>
+                             <button 
+                                 onClick={() => {
+                                     setConfirmState({
+                                         isOpen: true,
+                                         title: 'Discard Changes',
+                                         message: 'Discard all draft assignments? This will reset to the currently saved schedule.',
+                                         onConfirm: () => {
+                                             setIsSummaryModalOpen(false);
+                                             const year = currentDate.getFullYear();
+                                             const month = currentDate.getMonth() + 1;
+                                             dispatch(fetchSchedule({ year, month, token }));
+                                         },
+                                         type: 'danger'
+                                     });
+                                 }}
+                                 className="px-6 py-3 rounded-xl font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-all"
+                             >
+                                 Discard Draft
+                             </button>
                             <div className="flex-1" />
                             <div className="flex items-center text-slate-500 text-xs gap-2 mr-4 bg-slate-800/40 px-3 py-2 rounded-lg">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -1045,7 +1067,8 @@ const Calendar = () => {
                                                                 await axios.delete(`${API_URL}/session-templates/${t.id}`, { headers: { Authorization: `Bearer ${token}` } });
                                                                 setTemplates(prev => prev.filter(temp => temp.id !== t.id));
                                                                 setDeletingTemplateId(null);
-                                                            } catch (err) { alert("Failed to delete: " + err.message); }
+                                                                toast.success("Template deleted");
+                                                            } catch (err) { toast.error("Failed to delete: " + err.message); }
                                                         }}
                                                         style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
                                                     >Delete</button>
@@ -1164,7 +1187,7 @@ const Calendar = () => {
                                             const currentJsDay = new Date(currentTodayStr + 'T00:00:00').getDay();
                                             const currentInitDayOfWeek = currentJsDay === 0 ? 6 : currentJsDay - 1;
                                             setNewTemplate({ title: '', type: 'rehearsal', frequency: 'weekly', reference_start_date: currentTodayStr, day_of_week: currentInitDayOfWeek, start_time: '18:00:00', end_time: '20:00:00' });
-                                        } catch (e) { alert("Failed to add template"); }
+                                        } catch (e) { toast.error("Failed to add template"); }
                                     }}
                                     style={{ background: '#6366f1', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
                                 >
@@ -1185,10 +1208,10 @@ const Calendar = () => {
                                     const end_date = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
                                     const res = await axios.post(`${API_URL}/session-templates/generate`, { start_date, end_date }, { headers: { Authorization: `Bearer ${token}` } });
-                                    alert(`Generated ${res.data.length} sessions for ${currentDate.toLocaleString('default', { month: 'long' })}!`);
+                                    toast.success(`Generated ${res.data.length} sessions for ${currentDate.toLocaleString('default', { month: 'long' })}!`);
                                     dispatch(fetchSchedule({ year, month, token }));
                                     setIsRecurringModalOpen(false);
-                                } catch (e) { alert("Generation failed: " + (e.response?.data?.detail || e.message)); }
+                                } catch (e) { toast.error("Generation failed: " + (e.response?.data?.detail || e.message)); }
                             }}
                             style={{ 
                                 width: '100%', padding: '1rem', borderRadius: '12px', fontWeight: 700, cursor: 'pointer',
@@ -1202,6 +1225,15 @@ const Calendar = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal 
+                isOpen={confirmState.isOpen}
+                onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmState.onConfirm}
+                title={confirmState.title}
+                message={confirmState.message}
+                type={confirmState.type}
+            />
         </div>
     );
 };
