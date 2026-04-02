@@ -8,7 +8,7 @@ const Navigation = () => {
     const dispatch = useDispatch();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-    const isAdmin = user?.permissions?.includes('admin');
+    const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
 
     if (!token) return null;
 

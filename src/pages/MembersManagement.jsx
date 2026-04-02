@@ -1,12 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { fetchMembers, addMember, updateMember } from '../store/membersSlice';
 import Modal from '../components/Modal';
 import axios from 'axios';
 
 function MembersManagement() {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const { items: members, loading } = useSelector(state => state.members);
+    const { user } = useSelector(state => state.auth);
+    
+    const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
+    const canReadMembers = isAdmin || user?.permissions?.includes('members_read');
+    const canCreateMembers = isAdmin || user?.permissions?.includes('members_create');
+    const canEditMembers = isAdmin || user?.permissions?.includes('members_edit');
+    const canDeleteMembers = isAdmin || user?.permissions?.includes('members_delete');
+
+    console.log('[DEBUG] Member Privileges Eval:', { user, isAdmin, canReadMembers, canEditMembers, canDeleteMembers });
+
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingMember, setEditingMember] = useState(null);
@@ -41,6 +53,15 @@ function MembersManagement() {
         fetchMetadata();
     }, [dispatch]);
 
+    // Redirect non-authorized users
+    useEffect(() => {
+        if (!canReadMembers) {
+            navigate('/');
+        }
+    }, [canReadMembers, navigate]);
+
+    if (!canReadMembers) return null;
+
     const filteredMembers = members.filter(m =>
         (m.first_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (m.last_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -50,14 +71,14 @@ function MembersManagement() {
     const handleAddMember = () => {
         dispatch(addMember({
             ...newMember,
-            first_name: newMember.first_name.trim(),
-            last_name: newMember.last_name.trim(),
-            email: newMember.email.trim(),
-            phone_number: newMember.phone_number.trim() || null,
-            nfc_id: newMember.nfc_id.trim() || null,
-            password: newMember.password.trim(),
-            roles: newMember.roles,
-            permissions: newMember.permissions
+            first_name: (newMember.first_name || '').trim(),
+            last_name: (newMember.last_name || '').trim(),
+            email: (newMember.email || '').trim(),
+            phone_number: (newMember.phone_number || '').trim() || null,
+            nfc_id: (newMember.nfc_id || '').trim() || null,
+            password: (newMember.password || '').trim(),
+            roles: newMember.roles || [],
+            permissions: newMember.permissions || ['member']
         }));
         setIsAddModalOpen(false);
         setNewMember({
@@ -91,13 +112,13 @@ function MembersManagement() {
         dispatch(updateMember({
             id: editingMember.id,
             updates: {
-                first_name: editingMember.first_name.trim(),
-                last_name: editingMember.last_name.trim(),
-                email: editingMember.email.trim(),
+                first_name: (editingMember.first_name || '').trim(),
+                last_name: (editingMember.last_name || '').trim(),
+                email: (editingMember.email || '').trim(),
                 phone_number: (editingMember.phone_number || '').trim() || null,
                 nfc_id: (editingMember.nfc_id || '').trim() || null,
-                roles: editingMember.roles,
-                permissions: editingMember.permissions
+                roles: editingMember.roles || [],
+                permissions: editingMember.permissions || []
             }
         }));
         setIsEditModalOpen(false);
@@ -161,7 +182,9 @@ function MembersManagement() {
                             marginBottom: 0
                         }}
                     />
-                    <button className="btn" style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }} onClick={() => setIsAddModalOpen(true)}>+ Add Member</button>
+                    {canCreateMembers && (
+                        <button className="btn" style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }} onClick={() => setIsAddModalOpen(true)}>+ Add Member</button>
+                    )}
                 </div>
             </div>
 
@@ -181,7 +204,7 @@ function MembersManagement() {
                         {filteredMembers.map(m => (
                             <tr key={m.id}>
                                 <td>{m.first_name} {m.last_name}</td>
-                                <td>{m.email}</td>
+                                <td className="truncate-cell" title={m.email}>{m.email}</td>
                                 <td>{m.phone_number || 'N/A'}</td>
                                 <td>
                                     <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
@@ -196,7 +219,18 @@ function MembersManagement() {
                                     </span>
                                 </td>
                                 <td>
-                                    <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => openEditModal(m)}>Edit</button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        {canEditMembers && (
+                                            <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => openEditModal(m)}>Edit</button>
+                                        )}
+                                        {canDeleteMembers && m.id !== user?.id && (
+                                            <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }} onClick={() => {
+                                                if (window.confirm(`Are you sure you want to delete ${m.first_name}?`)) {
+                                                    axios.delete(`/members/${m.id}`).then(() => dispatch(fetchMembers()));
+                                                }
+                                            }}>Delete</button>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -222,7 +256,18 @@ function MembersManagement() {
                                 <span key={r} className="status-badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', fontSize: '0.65rem', border: '1px solid rgba(165, 180, 252, 0.2)' }}>{r}</span>
                             ))}
                         </div>
-                        <button className="btn" style={{ width: '100%', padding: '0.6rem', fontSize: '0.9rem' }} onClick={() => openEditModal(m)}>Edit Member Details</button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {canEditMembers && (
+                                <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem' }} onClick={() => openEditModal(m)}>Edit Details</button>
+                            )}
+                            {canDeleteMembers && m.id !== user?.id && (
+                                <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }} onClick={() => {
+                                    if (window.confirm(`Are you sure you want to delete ${m.first_name}?`)) {
+                                        axios.delete(`/members/${m.id}`).then(() => dispatch(fetchMembers()));
+                                    }
+                                }}>Delete</button>
+                            )}
+                        </div>
                     </div>
                 ))}
             </div>

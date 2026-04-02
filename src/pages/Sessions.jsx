@@ -22,8 +22,11 @@ function Sessions() {
     const { items: sessions } = useSelector(state => state.sessions);
     const { items: members } = useSelector(state => state.members);
     const { user } = useSelector(state => state.auth);
-    const isAdmin = user?.permissions?.includes('admin');
-    const isScheduleManager = isAdmin || user?.permissions?.includes('schedule_manager');
+    const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
+    const isSessionsRead = isAdmin || user?.permissions?.includes('sessions_read');
+    const isSessionsCreate = isAdmin || user?.permissions?.includes('sessions_create');
+    const isSessionsEdit = isAdmin || user?.permissions?.includes('sessions_edit');
+    const isSessionsDelete = isAdmin || user?.permissions?.includes('sessions_delete');
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -95,14 +98,14 @@ function Sessions() {
         fetchMetadata();
     }, [dispatch]);
 
-    // Redirect non-admin/manager
+    // Redirect non-admin/manager/authorized readers
     useEffect(() => {
-        if (!isScheduleManager) {
+        if (!isSessionsRead) {
             navigate('/');
         }
-    }, [isScheduleManager, navigate]);
+    }, [isSessionsRead, navigate]);
 
-    if (!isScheduleManager) return null;
+    if (!isSessionsRead) return null;
 
     // Fuzzy search: case-insensitive substring match on title, type, status
     const fuzzyMatch = (session) => {
@@ -321,17 +324,19 @@ function Sessions() {
                                 <option value="concluded">Concluded</option>
                                 <option value="archived">Archived</option>
                             </select>
-                            <button
-                                className="btn"
-                                style={{ 
-                                    background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#f87171', 
-                                    padding: '0', fontSize: '0.9rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    borderRadius: '8px'
-                                }}
-                                onClick={(e) => { e.stopPropagation(); requestDelete(s.id, s.title); }}
-                            >
-                                🗑️
-                            </button>
+                            {isSessionsDelete && (
+                                <button
+                                    className="btn"
+                                    style={{ 
+                                        background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#f87171', 
+                                        padding: '0', fontSize: '0.9rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        borderRadius: '8px'
+                                    }}
+                                    onClick={(e) => { e.stopPropagation(); requestDelete(s.id, s.title); }}
+                                >
+                                    🗑️
+                                </button>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -359,14 +364,16 @@ function Sessions() {
                             </label>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <button
-                                className="btn"
-                                style={{ background: 'var(--primary-color)', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                                onClick={() => setIsAddModalOpen(true)}
-                            >
-                                + Add Session
-                            </button>
-                            {selected.size > 0 && (
+                            {isSessionsCreate && (
+                                <button
+                                    className="btn"
+                                    style={{ background: 'var(--primary-color)', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                                    onClick={() => setIsAddModalOpen(true)}
+                                >
+                                    + Add Session
+                                </button>
+                            )}
+                            {(isSessionsDelete && selected.size > 0) && (
                                 <button
                                     className="btn"
                                     style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
@@ -604,9 +611,11 @@ function Sessions() {
                                 <button className="btn" style={{ background: 'var(--primary-color)' }} onClick={() => handleViewAttendance(viewSession)}>
                                     View Attendance
                                 </button>
-                                <button className="btn" style={{ background: '#4b5563' }} onClick={() => setIsEditMode(true)}>
-                                    Edit Details
-                                </button>
+                                {isSessionsEdit && (
+                                    <button className="btn" style={{ background: '#4b5563' }} onClick={() => setIsEditMode(true)}>
+                                        Edit Details
+                                    </button>
+                                )}
                             </div>
 
                             {/* Assignments Section */}

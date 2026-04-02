@@ -42,8 +42,11 @@ const Calendar = () => {
     const [generateYear, setGenerateYear] = useState(new Date().getFullYear());
 
     const isAdmin = currentUser?.permissions?.includes('admin') || currentUser?.roles?.includes('admin');
-    const isScheduleManager = isAdmin || currentUser?.permissions?.includes('schedule_manager');
-    const isAssignmentManager = isAdmin || currentUser?.permissions?.includes('assignment_manager');
+    const isScheduleRead = isAdmin || currentUser?.permissions?.includes('schedule_read');
+    const isAssignmentsEdit = isAdmin || currentUser?.permissions?.includes('assignments_edit');
+    const isTemplatesManage = isAdmin || currentUser?.permissions?.includes('templates_manage');
+    const isScheduleGenerate = isAdmin || currentUser?.permissions?.includes('schedule_generate');
+    const isScheduleExport = isAdmin || currentUser?.permissions?.includes('schedule_export');
     const [choirRoles, setChoirRoles] = useState(['lead_singer', 'soprano', 'alto', 'tenor']);
     const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
     const todayStr = new Date().toISOString().split('T')[0];
@@ -121,7 +124,9 @@ const Calendar = () => {
         if (token) {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth() + 1; // 1-indexed for backend
-            if (isScheduleManager) {
+            
+            // Managers/privileged users need extra data
+            if (isAssignmentsEdit || isTemplatesManage || isScheduleGenerate || isScheduleRead) {
                 dispatch(fetchMonthAvailability({ year, month, token }));
                 dispatch(fetchMembers());
                 
@@ -203,9 +208,9 @@ const Calendar = () => {
     }, [schedule, availability, currentUser, externalEvents]);
 
     const isMonthLocked = useMemo(() => {
-        if (isScheduleManager) return false; // Managers are never locked out
+        if (isAssignmentsEdit || isScheduleGenerate) return false; // Managers are never locked out
         return schedule?.sessions?.some(s => s.assignments?.length > 0);
-    }, [schedule, isScheduleManager]);
+    }, [schedule, isAssignmentsEdit, isScheduleGenerate]);
 
     // Derived Selection Availability State
     const { allSelectedUnavailable, noneSelectedUnavailable, mixedAvailability } = useMemo(() => {
@@ -238,7 +243,7 @@ const Calendar = () => {
                 // Refetch availability to update UI state
                 const year = currentDate.getFullYear();
                 const month = currentDate.getMonth() + 1;
-                if (isScheduleManager) dispatch(fetchMonthAvailability({ year, month, token }));
+                if (isAssignmentsEdit || isScheduleGenerate || isScheduleRead) dispatch(fetchMonthAvailability({ year, month, token }));
                 toast.success("Availability updated!");
             })
             .catch((err) => toast.error("Failed to update availability: " + err));
@@ -286,7 +291,7 @@ const Calendar = () => {
             const month = currentDate.getMonth() + 1;
             dispatch(fetchSchedule({ year, month, token }));
             dispatch(fetchUnavailableDays({ year, month, token }));
-            if (isScheduleManager) dispatch(fetchMonthAvailability({ year, month, token }));
+            if (isScheduleRead || isAssignmentsEdit || isScheduleGenerate || isTemplatesManage) dispatch(fetchMonthAvailability({ year, month, token }));
             toast.success(`${count} day(s) marked as ${isAvail ? 'available' : 'unavailable'}.`);
         })
         .catch((err) => toast.error("Failed to update availability: " + err));
@@ -448,36 +453,40 @@ const Calendar = () => {
                     >
                         Export .ics
                     </button>
-                    {isScheduleManager && (
+                    {isScheduleGenerate && (
+                        <button
+                            onClick={() => {
+                                setGenerateMonth(currentDate.getMonth() + 1);
+                                setGenerateYear(currentDate.getFullYear());
+                                setIsGenerateModalOpen(true);
+                            }}
+                            style={{ flex: '1 1 auto', minWidth: '120px', textAlign: 'center' }}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-blue-900/40 hover:bg-blue-700 transition font-medium text-sm"
+                        >
+                            Auto-Generate
+                        </button>
+                    )}
+                    {isTemplatesManage && (
+                        <button
+                            onClick={() => setIsRecurringModalOpen(true)}
+                            style={{ flex: '1 1 auto', minWidth: '130px', textAlign: 'center' }}
+                            className="bg-amber-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-amber-900/40 hover:bg-amber-700 transition font-medium text-sm flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            Recurring
+                        </button>
+                    )}
+                    {(isAssignmentsEdit || isScheduleGenerate) && schedule?.sessions?.length > 0 && (
+                        <button
+                            onClick={handleSaveSchedule}
+                            style={{ flex: '1 1 auto', minWidth: '100px', textAlign: 'center' }}
+                            className="bg-green-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-emerald-900/40 hover:bg-green-700 transition font-medium text-sm"
+                        >
+                            Save Schedule
+                        </button>
+                    )}
+                    {isScheduleExport && (
                         <>
-                            <button
-                                onClick={() => {
-                                    setGenerateMonth(currentDate.getMonth() + 1);
-                                    setGenerateYear(currentDate.getFullYear());
-                                    setIsGenerateModalOpen(true);
-                                }}
-                                style={{ flex: '1 1 auto', minWidth: '120px', textAlign: 'center' }}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-blue-900/40 hover:bg-blue-700 transition font-medium text-sm"
-                            >
-                                Auto-Generate
-                            </button>
-                            <button
-                                onClick={() => setIsRecurringModalOpen(true)}
-                                style={{ flex: '1 1 auto', minWidth: '130px', textAlign: 'center' }}
-                                className="bg-amber-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-amber-900/40 hover:bg-amber-700 transition font-medium text-sm flex items-center justify-center gap-2"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                Recurring
-                            </button>
-                            {schedule?.sessions?.length > 0 && (
-                                <button
-                                    onClick={handleSaveSchedule}
-                                    style={{ flex: '1 1 auto', minWidth: '100px', textAlign: 'center' }}
-                                    className="bg-green-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-emerald-900/40 hover:bg-green-700 transition font-medium text-sm"
-                                >
-                                    Save Schedule
-                                </button>
-                            )}
                             <button
                                 onClick={handleExportCSV}
                                 style={{ flex: '1 1 auto', minWidth: '100px', textAlign: 'center' }}
@@ -583,7 +592,7 @@ const Calendar = () => {
                                     <button
                                         onClick={handleToggleAvailability}
                                         style={{
-                                            width: '100%', padding: '0.5rem', borderRadius: '8px', fontWeight: 500, cursor: 'pointer',
+                                            width: '100%', padding: '0.5rem', borderRadius: '8px', fontWeight: 500,
                                             transition: 'all 0.2s',
                                             background: isAvailable ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
                                             color: isAvailable ? '#34d399' : '#f87171',
@@ -611,7 +620,7 @@ const Calendar = () => {
                                                             const year = currentDate.getFullYear();
                                                             const month = currentDate.getMonth() + 1;
                                                             dispatch(fetchSchedule({ year, month, token }));
-                                                            if (isScheduleManager) dispatch(fetchMonthAvailability({ year, month, token }));
+                                                            if (isScheduleRead || isAssignmentsEdit || isTemplatesManage || isScheduleGenerate) dispatch(fetchMonthAvailability({ year, month, token }));
                                                             toast.success(`All sessions on ${dayStr} marked as unavailable.`);
                                                         })
                                                         .catch((err) => toast.error(err));
@@ -637,7 +646,7 @@ const Calendar = () => {
                                     )}
                                 </div>
 
-                                {isAssignmentManager ? (
+                                {isAssignmentsEdit ? (
                                     <div style={{ marginBottom: '1rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                             <h3 style={{ fontWeight: 600, color: '#f8fafc', fontSize: '1rem', margin: 0 }}>Role Assignments</h3>

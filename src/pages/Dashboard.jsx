@@ -19,7 +19,14 @@ function Dashboard() {
     const { items: attendance, memberHistory } = useSelector(state => state.attendance);
     const { user } = useSelector(state => state.auth);
 
-    const isAdmin = user?.permissions?.includes('admin');
+    const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
+    const canReadSessions = isAdmin || user?.permissions?.includes('sessions_read');
+    const canCreateSessions = isAdmin || user?.permissions?.includes('sessions_create');
+    const canDeleteSessions = isAdmin || user?.permissions?.includes('sessions_delete');
+    const canReadAttendance = isAdmin || user?.permissions?.includes('attendance_read');
+    const canWriteAttendance = isAdmin || user?.permissions?.includes('attendance_write');
+    const canDeleteAttendance = isAdmin || user?.permissions?.includes('attendance_delete');
+    const canCreateMembers = isAdmin || user?.permissions?.includes('members_create');
 
     const [isMemberModalOpen, setMemberModalOpen] = useState(false);
     const [isSessionModalOpen, setSessionModalOpen] = useState(false);
@@ -170,7 +177,7 @@ function Dashboard() {
 
     // QR auto-refresh
     useEffect(() => {
-        if (qrActive && currentSession && isAdmin) {
+        if (qrActive && currentSession && canWriteAttendance) {
             fetchQrToken(currentSession.id);
             qrIntervalRef.current = setInterval(() => {
                 fetchQrToken(currentSession.id);
@@ -194,7 +201,7 @@ function Dashboard() {
     }, [qrActive, currentSession, isAdmin, fetchQrToken]);
 
     useEffect(() => {
-        if (isAdmin) {
+        if (canReadSessions || canReadAttendance || canCreateMembers) {
             dispatch(fetchMembers());
             dispatch(fetchSessions());
 
@@ -214,10 +221,10 @@ function Dashboard() {
     }, [dispatch, isAdmin, user]);
 
     useEffect(() => {
-        if (currentSession && isAdmin) {
+        if (currentSession && canReadAttendance) {
             dispatch(fetchAttendance(currentSession.id));
         }
-    }, [currentSession, dispatch, isAdmin]);
+    }, [currentSession, dispatch, canReadAttendance]);
 
     const handleAddMember = () => {
         dispatch(addMember({
@@ -328,12 +335,12 @@ function Dashboard() {
     return (
         <>
             <div className="grid">
-                {isAdmin && (
+                {canReadSessions && (
                     <div className="glass-card">
                         <div className="flex-between" style={{ marginBottom: '1rem' }}>
                             <h2>Active Sessions</h2>
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                {selectedSessions.size > 0 && (
+                                {selectedSessions.size > 0 && canDeleteSessions && (
                                     <button
                                         className="btn"
                                         style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
@@ -395,13 +402,15 @@ function Dashboard() {
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     <span className={`status-badge ${s.type === 'rehearsal' ? 'status-nfc' : 'status-manual'}`}>{s.type}</span>
-                                                    <button
-                                                        className="btn"
-                                                        style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
-                                                        onClick={(e) => { e.stopPropagation(); requestDelete('session', s.id, s.title); }}
-                                                    >
-                                                        🗑️ Delete
-                                                    </button>
+                                                    {canDeleteSessions && (
+                                                        <button
+                                                            className="btn"
+                                                            style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                                                            onClick={(e) => { e.stopPropagation(); requestDelete('session', s.id, s.title); }}
+                                                        >
+                                                            🗑️ Delete
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -414,13 +423,15 @@ function Dashboard() {
                                 </>
                             );
                         })()}
-                        <button className="btn" style={{ marginTop: '0.75rem' }} onClick={() => setSessionModalOpen(true)}>+ New Session</button>
+                        {canCreateSessions && (
+                            <button className="btn" style={{ marginTop: '0.75rem' }} onClick={() => setSessionModalOpen(true)}>+ New Session</button>
+                        )}
                     </div>
                 )}
             </div>
 
             <div className="glass-card">
-                {isAdmin ? (
+                {canReadAttendance ? (
                     <>
                         <h2>{currentSession ? `Attendance: ${currentSession.title}` : 'Attendance Records'}</h2>
                         {!currentSession ? (
@@ -445,27 +456,29 @@ function Dashboard() {
                                                 {qrActive ? 'Members can scan this code to mark attendance' : 'Enable to show QR code for members'}
                                             </small>
                                         </div>
-                                        <button
-                                            className="btn"
-                                            style={{
-                                                background: qrActive ? 'rgba(255,50,50,0.2)' : 'rgba(74,222,128,0.2)',
-                                                border: qrActive ? '1px solid rgba(255,50,50,0.4)' : '1px solid rgba(74,222,128,0.4)',
-                                                color: qrActive ? '#ff6b6b' : '#4ade80',
-                                                padding: '0.4rem 1rem',
-                                                fontSize: '0.85rem',
-                                                opacity: (currentSession.status || 'active') !== 'active' ? 0.5 : 1,
-                                                cursor: (currentSession.status || 'active') !== 'active' ? 'not-allowed' : 'pointer'
-                                            }}
-                                            onClick={() => {
-                                                if ((currentSession.status || 'active') !== 'active') {
-                                                    toast.error("QR code attendance is disabled because this session is not active.");
-                                                    return;
-                                                }
-                                                setQrActive(!qrActive);
-                                            }}
-                                        >
-                                            {qrActive ? '⏹ Stop' : '▶ Start'}
-                                        </button>
+                                        {canWriteAttendance && (
+                                            <button
+                                                className="btn"
+                                                style={{
+                                                    background: qrActive ? 'rgba(255,50,50,0.2)' : 'rgba(74,222,128,0.2)',
+                                                    border: qrActive ? '1px solid rgba(255,50,50,0.4)' : '1px solid rgba(74,222,128,0.4)',
+                                                    color: qrActive ? '#ff6b6b' : '#4ade80',
+                                                    padding: '0.4rem 1rem',
+                                                    fontSize: '0.85rem',
+                                                    opacity: (currentSession.status || 'active') !== 'active' ? 0.5 : 1,
+                                                    cursor: (currentSession.status || 'active') !== 'active' ? 'not-allowed' : 'pointer'
+                                                }}
+                                                onClick={() => {
+                                                    if ((currentSession.status || 'active') !== 'active') {
+                                                        toast.error("QR code attendance is disabled because this session is not active.");
+                                                        return;
+                                                    }
+                                                    setQrActive(!qrActive);
+                                                }}
+                                            >
+                                                {qrActive ? '⏹ Stop' : '▶ Start'}
+                                            </button>
+                                        )}
                                     </div>
 
                                     {qrActive && qrUrl && (
@@ -555,13 +568,15 @@ function Dashboard() {
                                                         <td>{markedBy ? `${markedBy.first_name} ${markedBy.last_name}` : 'Self'}</td>
                                                         <td>{a.latitude ? `${a.latitude.toFixed(4)}, ${a.longitude.toFixed(4)}` : 'N/A'}</td>
                                                         <td>
-                                                            <button
-                                                                className="btn"
-                                                                style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                                                                onClick={() => requestDelete('attendance', a.id, memberName)}
-                                                            >
-                                                                🗑️ Remove
-                                                            </button>
+                                                            {canDeleteAttendance && (
+                                                                <button
+                                                                    className="btn"
+                                                                    style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                                                                    onClick={() => requestDelete('attendance', a.id, memberName)}
+                                                                >
+                                                                    🗑️ Remove
+                                                                </button>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 );
@@ -571,7 +586,7 @@ function Dashboard() {
                                         </tbody>
                                     </table>
                                 </div>
-                                {selectedAttendance.size > 0 && (
+                                {selectedAttendance.size > 0 && canDeleteAttendance && (
                                     <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
                                         <button
                                             className="btn"
@@ -582,31 +597,33 @@ function Dashboard() {
                                         </button>
                                     </div>
                                 )}
-                                <div style={{ marginTop: '2rem' }}>
-                                    <h3>Mark Manual Attendance</h3>
-                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        {members.filter(m => !attendance.some(a => a.member_id === m.id)).map(m => (
-                                            <button
-                                                key={m.id}
-                                                className="btn"
-                                                style={{
-                                                    background: 'rgba(255,255,255,0.1)',
-                                                    opacity: (currentSession.status || 'active') !== 'active' ? 0.5 : 1,
-                                                    cursor: (currentSession.status || 'active') !== 'active' ? 'not-allowed' : 'pointer'
-                                                }}
-                                                onClick={() => {
-                                                    if ((currentSession.status || 'active') !== 'active') {
-                                                        toast.error("Manual attendance is disabled because this session is not active.");
-                                                        return;
-                                                    }
-                                                    handleMarkAttendance(m.id);
-                                                }}
-                                            >
-                                                {m.first_name} {m.last_name}
-                                            </button>
-                                        ))}
+                                {canWriteAttendance && (
+                                    <div style={{ marginTop: '2rem' }}>
+                                        <h3>Mark Manual Attendance</h3>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            {members.filter(m => !attendance.some(a => a.member_id === m.id)).map(m => (
+                                                <button
+                                                    key={m.id}
+                                                    className="btn"
+                                                    style={{
+                                                        background: 'rgba(255,255,255,0.1)',
+                                                        opacity: (currentSession.status || 'active') !== 'active' ? 0.5 : 1,
+                                                        cursor: (currentSession.status || 'active') !== 'active' ? 'not-allowed' : 'pointer'
+                                                    }}
+                                                    onClick={() => {
+                                                        if ((currentSession.status || 'active') !== 'active') {
+                                                            toast.error("Manual attendance is disabled because this session is not active.");
+                                                            return;
+                                                        }
+                                                        handleMarkAttendance(m.id);
+                                                    }}
+                                                >
+                                                    {m.first_name} {m.last_name}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                         )}
                     </>

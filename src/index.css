@@ -176,15 +176,25 @@ table {
 
 th,
 td {
-  padding: 1rem;
+  padding: 0.75rem 0.5rem;
   text-align: left;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.95rem;
+}
+
+.truncate-cell {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 th {
   color: var(--text-secondary);
   font-weight: 500;
 }
+
+
 
 .status-badge {
   display: inline-flex;

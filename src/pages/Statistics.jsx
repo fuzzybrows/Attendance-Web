@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { fetchStats, fetchMemberStats } from '../store/statsSlice';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
@@ -7,12 +8,29 @@ const COLORS = ['#10b981', '#ef4444', '#6366f1', '#f59e0b'];
 
 const Statistics = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const { overall, memberDetail } = useSelector(state => state.stats);
+    const { user } = useSelector(state => state.auth);
+
+    const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
+    const canReadAttendance = isAdmin || user?.permissions?.includes('attendance_read');
+
     const [selectedMember, setSelectedMember] = useState(null);
 
     useEffect(() => {
-        dispatch(fetchStats());
-    }, [dispatch]);
+        if (canReadAttendance) {
+            dispatch(fetchStats());
+        }
+    }, [dispatch, canReadAttendance]);
+
+    // Redirect non-authorized users
+    useEffect(() => {
+        if (!canReadAttendance) {
+            navigate('/');
+        }
+    }, [canReadAttendance, navigate]);
+
+    if (!canReadAttendance) return null;
 
     const handleMemberLookup = (memberId) => {
         setSelectedMember(memberId);
