@@ -23,6 +23,7 @@ function Sessions() {
     const { items: members } = useSelector(state => state.members);
     const { user } = useSelector(state => state.auth);
     const isAdmin = user?.permissions?.includes('admin');
+    const isScheduleManager = isAdmin || user?.permissions?.includes('schedule_manager');
 
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -94,14 +95,14 @@ function Sessions() {
         fetchMetadata();
     }, [dispatch]);
 
-    // Redirect non-admin
+    // Redirect non-admin/manager
     useEffect(() => {
-        if (!isAdmin) {
+        if (!isScheduleManager) {
             navigate('/');
         }
-    }, [isAdmin, navigate]);
+    }, [isScheduleManager, navigate]);
 
-    if (!isAdmin) return null;
+    if (!isScheduleManager) return null;
 
     // Fuzzy search: case-insensitive substring match on title, type, status
     const fuzzyMatch = (session) => {

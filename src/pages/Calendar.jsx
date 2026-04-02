@@ -42,6 +42,8 @@ const Calendar = () => {
     const [generateYear, setGenerateYear] = useState(new Date().getFullYear());
 
     const isAdmin = currentUser?.permissions?.includes('admin') || currentUser?.roles?.includes('admin');
+    const isScheduleManager = isAdmin || currentUser?.permissions?.includes('schedule_manager');
+    const isAssignmentManager = isAdmin || currentUser?.permissions?.includes('assignment_manager');
     const [choirRoles, setChoirRoles] = useState(['lead_singer', 'soprano', 'alto', 'tenor']);
     const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
     const todayStr = new Date().toISOString().split('T')[0];
@@ -119,7 +121,7 @@ const Calendar = () => {
         if (token) {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth() + 1; // 1-indexed for backend
-            if (isAdmin) {
+            if (isScheduleManager) {
                 dispatch(fetchMonthAvailability({ year, month, token }));
                 dispatch(fetchMembers());
                 
@@ -201,9 +203,9 @@ const Calendar = () => {
     }, [schedule, availability, currentUser, externalEvents]);
 
     const isMonthLocked = useMemo(() => {
-        if (isAdmin) return false; // Admins are never locked out
+        if (isScheduleManager) return false; // Managers are never locked out
         return schedule?.sessions?.some(s => s.assignments?.length > 0);
-    }, [schedule, isAdmin]);
+    }, [schedule, isScheduleManager]);
 
     // Derived Selection Availability State
     const { allSelectedUnavailable, noneSelectedUnavailable, mixedAvailability } = useMemo(() => {
@@ -236,7 +238,7 @@ const Calendar = () => {
                 // Refetch availability to update UI state
                 const year = currentDate.getFullYear();
                 const month = currentDate.getMonth() + 1;
-                if (isAdmin) dispatch(fetchMonthAvailability({ year, month, token }));
+                if (isScheduleManager) dispatch(fetchMonthAvailability({ year, month, token }));
                 toast.success("Availability updated!");
             })
             .catch((err) => toast.error("Failed to update availability: " + err));
@@ -284,7 +286,7 @@ const Calendar = () => {
             const month = currentDate.getMonth() + 1;
             dispatch(fetchSchedule({ year, month, token }));
             dispatch(fetchUnavailableDays({ year, month, token }));
-            if (isAdmin) dispatch(fetchMonthAvailability({ year, month, token }));
+            if (isScheduleManager) dispatch(fetchMonthAvailability({ year, month, token }));
             toast.success(`${count} day(s) marked as ${isAvail ? 'available' : 'unavailable'}.`);
         })
         .catch((err) => toast.error("Failed to update availability: " + err));
@@ -446,7 +448,7 @@ const Calendar = () => {
                     >
                         Export .ics
                     </button>
-                    {isAdmin && (
+                    {isScheduleManager && (
                         <>
                             <button
                                 onClick={() => {
@@ -609,7 +611,7 @@ const Calendar = () => {
                                                             const year = currentDate.getFullYear();
                                                             const month = currentDate.getMonth() + 1;
                                                             dispatch(fetchSchedule({ year, month, token }));
-                                                            if (isAdmin) dispatch(fetchMonthAvailability({ year, month, token }));
+                                                            if (isScheduleManager) dispatch(fetchMonthAvailability({ year, month, token }));
                                                             toast.success(`All sessions on ${dayStr} marked as unavailable.`);
                                                         })
                                                         .catch((err) => toast.error(err));
@@ -635,7 +637,7 @@ const Calendar = () => {
                                     )}
                                 </div>
 
-                                {isAdmin ? (
+                                {isAssignmentManager ? (
                                     <div style={{ marginBottom: '1rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                             <h3 style={{ fontWeight: 600, color: '#f8fafc', fontSize: '1rem', margin: 0 }}>Role Assignments</h3>
