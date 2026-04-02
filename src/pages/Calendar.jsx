@@ -205,6 +205,18 @@ const Calendar = () => {
         return schedule?.sessions?.some(s => s.assignments?.length > 0);
     }, [schedule, isAdmin]);
 
+    // Derived Selection Availability State
+    const { allSelectedUnavailable, noneSelectedUnavailable, mixedAvailability } = useMemo(() => {
+        if (selectedDays.length === 0) return { allSelectedUnavailable: false, noneSelectedUnavailable: false, mixedAvailability: false };
+        const allUnavailable = selectedDays.every(d => unavailableDays.includes(d));
+        const noneUnavailable = selectedDays.every(d => !unavailableDays.includes(d));
+        return {
+            allSelectedUnavailable: allUnavailable,
+            noneSelectedUnavailable: noneUnavailable,
+            mixedAvailability: !allUnavailable && !noneUnavailable
+        };
+    }, [selectedDays, unavailableDays]);
+
     const handleSelectEvent = (event) => {
         if (isMonthLocked && !isAdmin) {
             // We still allow selection to view details, but we'll show a lock notice in the modal
@@ -776,24 +788,28 @@ const Calendar = () => {
                         </div>
                         <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '1.5rem' }}>Set your availability for <strong style={{ color: '#f8fafc' }}>{selectedDays.length > 1 ? 'all selected days' : 'all sessions on this day'}</strong>.</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <button
-                                onClick={() => handleMarkDay(false)}
-                                style={{
-                                    width: '100%', padding: '0.5rem', borderRadius: '8px', fontWeight: 500, cursor: 'pointer',
-                                    background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '2px solid rgba(239,68,68,0.3)', transition: 'all 0.2s'
-                                }}
-                            >
-                                🚫 Mark {selectedDays.length > 1 ? `${selectedDays.length} days` : 'whole day'} unavailable
-                            </button>
-                            <button
-                                onClick={() => handleMarkDay(true)}
-                                style={{
-                                    width: '100%', padding: '0.5rem', borderRadius: '8px', fontWeight: 500, cursor: 'pointer',
-                                    background: 'rgba(16,185,129,0.15)', color: '#34d399', border: '2px solid rgba(16,185,129,0.3)', transition: 'all 0.2s'
-                                }}
-                            >
-                                ✅ Mark {selectedDays.length > 1 ? `${selectedDays.length} days` : 'whole day'} available
-                            </button>
+                            {(noneSelectedUnavailable || mixedAvailability) && (
+                                <button
+                                    onClick={() => handleMarkDay(false)}
+                                    style={{
+                                        width: '100%', padding: '0.875rem', borderRadius: '12px', fontWeight: 600, cursor: 'pointer',
+                                        background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)', transition: 'all 0.2s'
+                                    }}
+                                >
+                                    🚫 Mark {selectedDays.length > 1 ? `${selectedDays.length} days` : 'as'} Unavailable
+                                </button>
+                            )}
+                            {(allSelectedUnavailable || mixedAvailability) && (
+                                <button
+                                    onClick={() => handleMarkDay(true)}
+                                    style={{
+                                        width: '100%', padding: '0.875rem', borderRadius: '12px', fontWeight: 600, cursor: 'pointer',
+                                        background: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid rgba(16,185,129,0.2)', transition: 'all 0.2s'
+                                    }}
+                                >
+                                    ✅ Mark {selectedDays.length > 1 ? `${selectedDays.length} days` : 'as'} Available
+                                </button>
+                            )}
                             <button
                                 onClick={() => setSelectedDays([])}
                                 style={{
@@ -834,12 +850,16 @@ const Calendar = () => {
                         }
                     `}</style>
                     <span style={{ color: '#f8fafc', fontWeight: 'bold', fontSize: '1.1rem' }}>{selectedDays.length} days selected</span>
-                    <button onClick={() => handleMarkDay(false)} className="bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg font-medium hover:bg-red-500/30 transition shadow-sm">
-                        🚫 Mark Unavailable
-                    </button>
-                    <button onClick={() => handleMarkDay(true)} className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-lg font-medium hover:bg-emerald-500/30 transition shadow-sm">
-                        ✅ Mark Available
-                    </button>
+                    {(noneSelectedUnavailable || mixedAvailability) && (
+                        <button onClick={() => handleMarkDay(false)} className="bg-red-500/10 text-red-400 border border-red-500/20 px-5 py-2.5 rounded-xl font-bold hover:bg-red-500/20 transition shadow-sm active:scale-95">
+                            🚫 Mark Unavailable
+                        </button>
+                    )}
+                    {(allSelectedUnavailable || mixedAvailability) && (
+                        <button onClick={() => handleMarkDay(true)} className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-5 py-2.5 rounded-xl font-bold hover:bg-emerald-500/20 transition shadow-sm active:scale-95">
+                            ✅ Mark Available
+                        </button>
+                    )}
                     <button onClick={() => setSelectedDays([])} className="text-slate-400 hover:text-white px-2 font-medium transition">
                         Clear
                     </button>

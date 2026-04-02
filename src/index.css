@@ -187,10 +187,15 @@ th {
 }
 
 .status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .status-manual {
@@ -241,14 +246,22 @@ select {
 }
 
 .date-picker-input-small {
-  background: rgba(15, 23, 42, 0.5) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: white !important;
-  padding: 0.4rem 0.6rem !important;
-  border-radius: 0.5rem !important;
+  padding: 0 0.75rem !important;
+  border-radius: 8px !important;
   font-size: 0.85rem !important;
-  width: 130px !important;
+  width: 140px !important;
+  height: 38px !important;
+  margin: 0 !important;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.date-picker-input-small:focus {
+  border-color: rgba(99, 102, 241, 0.5) !important;
+  outline: none;
 }
 
 .date-picker-wrapper-small {
@@ -501,4 +514,19 @@ select {
 
 .rbc-current-time-indicator {
   background-color: #ef4444;
+}
+
+.filter-segment {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0 0.875rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  height: 38px;
+}
+
+.filter-segment span {
+  white-space: nowrap;
 }

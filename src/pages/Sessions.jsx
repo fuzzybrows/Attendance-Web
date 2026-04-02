@@ -277,7 +277,7 @@ function Sessions() {
                     }}
                         onClick={() => handleViewSession(s)}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
                             <input
                                 type="checkbox"
                                 checked={selected.has(s.id)}
@@ -289,22 +289,30 @@ function Sessions() {
                                     setSelected(next);
                                 }}
                                 onClick={(e) => e.stopPropagation()}
-                                style={{ accentColor: '#818cf8', margin: 0, width: '18px', height: '18px', flexShrink: 0 }}
+                                style={{ accentColor: '#818cf8', margin: 0, width: '20px', height: '20px', flexShrink: 0 }}
                             />
                             <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                <strong style={{ lineHeight: '1.2' }}>{s.title}</strong>
-                                <small style={{ color: 'var(--text-secondary)', lineHeight: '1.2', marginTop: '0.2rem' }}>{new Date(s.start_time).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</small>
+                                <strong style={{ lineHeight: '1.4', fontSize: '1rem' }}>{s.title}</strong>
+                                <small style={{ color: 'var(--text-secondary)', lineHeight: '1.4', marginTop: '0.1rem', fontSize: '0.8rem' }}>{new Date(s.start_time).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</small>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span className={`status-badge ${s.type === 'rehearsal' ? 'status-nfc' : 'status-manual'}`}>{s.type}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span className="status-badge" style={{ 
+                                background: s.type === 'rehearsal' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                color: s.type === 'rehearsal' ? '#818cf8' : '#10b981',
+                                border: `1px solid ${s.type === 'rehearsal' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                                textTransform: 'capitalize'
+                            }}>
+                                {s.type}
+                            </span>
                             <select
                                 value={s.status || 'active'}
                                 onChange={(e) => { e.stopPropagation(); handleStatusChange(s.id, e.target.value); }}
                                 onClick={(e) => e.stopPropagation()}
                                 style={{
                                     background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color,
-                                    borderRadius: '8px', padding: '0.2rem 0.4rem', fontSize: '0.8rem', cursor: 'pointer', outline: 'none'
+                                    borderRadius: '8px', padding: '0 0.5rem', fontSize: '0.8125rem', cursor: 'pointer', outline: 'none',
+                                    height: '32px', margin: 0, width: 'auto', fontWeight: 600
                                 }}
                             >
                                 <option value="scheduled">Scheduled</option>
@@ -314,7 +322,11 @@ function Sessions() {
                             </select>
                             <button
                                 className="btn"
-                                style={{ background: 'rgba(255,50,50,0.2)', border: '1px solid rgba(255,50,50,0.4)', color: '#ff6b6b', padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                                style={{ 
+                                    background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#f87171', 
+                                    padding: '0', fontSize: '0.9rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    borderRadius: '8px'
+                                }}
                                 onClick={(e) => { e.stopPropagation(); requestDelete(s.id, s.title); }}
                             >
                                 🗑️
@@ -367,32 +379,37 @@ function Sessions() {
 
                     {/* Filter Row */}
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <input
-                            type="text"
-                            placeholder="🔍 Search sessions..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{
-                                flex: 1, minWidth: '200px', padding: '0.4rem 1rem', borderRadius: '10px',
-                                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
-                                color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none',
-                                transition: 'border-color 0.2s ease', height: '38px', margin: 0
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = 'rgba(129, 140, 248, 0.5)'}
-                            onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
-                        />
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <div style={{ flex: '1 1 240px', position: 'relative' }}>
+                            <input
+                                type="text"
+                                placeholder="Search sessions..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                style={{
+                                    width: '100%', padding: '0.5rem 1rem 0.5rem 2.2rem', borderRadius: '10px',
+                                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
+                                    color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none',
+                                    transition: 'all 0.2s ease', height: '38px', margin: 0
+                                }}
+                                onFocus={(e) => e.target.style.borderColor = 'rgba(129, 140, 248, 0.5)'}
+                                onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
+                            />
+                            <span style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, pointerEvents: 'none' }}>🔍</span>
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '0.3rem', background: 'rgba(255,255,255,0.05)', padding: '3px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', height: '38px', alignItems: 'center' }}>
                             {['all', ...availableStatuses].map(f => (
                                 <button
                                     key={f}
                                     className="btn"
                                     onClick={() => setStatusFilter(f)}
                                     style={{
-                                        padding: '0.4rem 0.8rem', fontSize: '0.8rem', height: '38px',
-                                        background: statusFilter === f ? 'rgba(129, 140, 248, 0.2)' : 'rgba(255,255,255,0.05)',
-                                        border: statusFilter === f ? '1px solid rgba(129, 140, 248, 0.4)' : '1px solid rgba(255,255,255,0.15)',
-                                        color: statusFilter === f ? '#818cf8' : 'var(--text-secondary)',
-                                        borderRadius: '8px', textTransform: 'capitalize', display: 'flex', alignItems: 'center'
+                                        padding: '0 0.75rem', fontSize: '0.8rem', height: '30px',
+                                        background: statusFilter === f ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                                        border: 'none',
+                                        color: statusFilter === f ? '#a5b4fc' : 'var(--text-secondary)',
+                                        borderRadius: '7px', textTransform: 'capitalize', fontWeight: statusFilter === f ? 700 : 500,
+                                        transition: 'all 0.2s'
                                     }}
                                 >
                                     {f}
@@ -401,13 +418,12 @@ function Sessions() {
                         </div>
 
                         {/* Type Filter */}
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0 0.75rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', height: '38px' }}>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Type:</span>
+                        <div className="filter-segment">
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Type:</span>
                             <select
-                                className="input-field"
                                 value={typeFilter}
                                 onChange={(e) => setTypeFilter(e.target.value)}
-                                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0', cursor: 'pointer', outline: 'none', fontSize: '0.85rem', textTransform: 'capitalize' }}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0 0.15rem', cursor: 'pointer', outline: 'none', fontSize: '0.85rem', textTransform: 'capitalize', width: 'auto', marginBottom: 0, fontWeight: 600 }}
                             >
                                 <option value="all" style={{ background: '#1e1b4b' }}>All Types</option>
                                 {availableTypes.map(type => (
@@ -419,22 +435,22 @@ function Sessions() {
                         </div>
 
                         {/* Date Range Filter */}
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '0 0.75rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', height: '38px' }}>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>From:</span>
+                        <div className="filter-segment">
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500, lineHeight: 1 }}>From:</span>
                             <DatePicker
                                 selected={startDate}
                                 onChange={(date) => setStartDate(date)}
-                                placeholderText="Start Date"
+                                placeholderText="Start"
                                 className="date-picker-input-small"
                                 wrapperClassName="date-picker-wrapper-small"
                                 dateFormat="MMM d, yyyy"
                                 isClearable
                             />
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>To:</span>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500, lineHeight: 1 }}>To:</span>
                             <DatePicker
                                 selected={endDate}
                                 onChange={(date) => setEndDate(date)}
-                                placeholderText="End Date"
+                                placeholderText="End"
                                 className="date-picker-input-small"
                                 wrapperClassName="date-picker-wrapper-small"
                                 dateFormat="MMM d, yyyy"
@@ -443,7 +459,7 @@ function Sessions() {
                             {(startDate || endDate) && (
                                 <button 
                                     className="btn" 
-                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'rgba(255,255,255,0.1)' }}
+                                    style={{ padding: '0 0.5rem', fontSize: '0.75rem', height: '24px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)', marginLeft: '0.25rem' }}
                                     onClick={() => { setStartDate(null); setEndDate(null); }}
                                 >
                                     Reset
