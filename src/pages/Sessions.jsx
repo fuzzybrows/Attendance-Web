@@ -379,7 +379,8 @@ function Sessions() {
 
                     {/* Filter Row */}
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <div style={{ flex: '1 1 240px', position: 'relative' }}>
+                        {/* Search Filter */}
+                        <div style={{ position: 'relative', width: '280px' }}>
                             <input
                                 type="text"
                                 placeholder="Search sessions..."
@@ -391,25 +392,24 @@ function Sessions() {
                                     color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none',
                                     transition: 'all 0.2s ease', height: '38px', margin: 0
                                 }}
-                                onFocus={(e) => e.target.style.borderColor = 'rgba(129, 140, 248, 0.5)'}
-                                onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.15)'}
                             />
                             <span style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, pointerEvents: 'none' }}>🔍</span>
                         </div>
                         
-                        <div style={{ display: 'flex', gap: '0.3rem', background: 'rgba(255,255,255,0.05)', padding: '3px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', height: '38px', alignItems: 'center' }}>
+                        {/* Status Filter Buttons */}
+                        <div style={{ display: 'flex', gap: '0.3rem', background: 'rgba(255,255,255,0.05)', padding: '0px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', height: '38px', alignItems: 'center', overflow: 'hidden' }}>
                             {['all', ...availableStatuses].map(f => (
                                 <button
                                     key={f}
                                     className="btn"
                                     onClick={() => setStatusFilter(f)}
                                     style={{
-                                        padding: '0 0.75rem', fontSize: '0.8rem', height: '30px',
+                                        padding: '0 1rem', fontSize: '0.85rem', height: '100%',
                                         background: statusFilter === f ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
                                         border: 'none',
                                         color: statusFilter === f ? '#a5b4fc' : 'var(--text-secondary)',
-                                        borderRadius: '7px', textTransform: 'capitalize', fontWeight: statusFilter === f ? 700 : 500,
-                                        transition: 'all 0.2s'
+                                        borderRadius: 0, textTransform: 'capitalize', fontWeight: statusFilter === f ? 700 : 500,
+                                        transition: 'all 0.2s', margin: 0
                                     }}
                                 >
                                     {f}
@@ -418,12 +418,12 @@ function Sessions() {
                         </div>
 
                         {/* Type Filter */}
-                        <div className="filter-segment">
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Type:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0 0.875rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', height: '38px' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Type:</span>
                             <select
                                 value={typeFilter}
                                 onChange={(e) => setTypeFilter(e.target.value)}
-                                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0 0.15rem', cursor: 'pointer', outline: 'none', fontSize: '0.85rem', textTransform: 'capitalize', width: 'auto', marginBottom: 0, fontWeight: 600 }}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '0 0.25rem', cursor: 'pointer', outline: 'none', fontSize: '0.85rem', textTransform: 'capitalize', width: 'auto', margin: 0, fontWeight: 600, height: '100%' }}
                             >
                                 <option value="all" style={{ background: '#1e1b4b' }}>All Types</option>
                                 {availableTypes.map(type => (
@@ -435,8 +435,8 @@ function Sessions() {
                         </div>
 
                         {/* Date Range Filter */}
-                        <div className="filter-segment">
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500, lineHeight: 1 }}>From:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0 0.875rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', height: '38px' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>From:</span>
                             <DatePicker
                                 selected={startDate}
                                 onChange={(date) => setStartDate(date)}
@@ -446,7 +446,7 @@ function Sessions() {
                                 dateFormat="MMM d, yyyy"
                                 isClearable
                             />
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500, lineHeight: 1 }}>To:</span>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>To:</span>
                             <DatePicker
                                 selected={endDate}
                                 onChange={(date) => setEndDate(date)}

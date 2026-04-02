@@ -257,6 +257,7 @@ select {
   margin: 0 !important;
   cursor: pointer;
   transition: all 0.2s;
+  line-height: normal !important;
 }
 
 .date-picker-input-small:focus {
@@ -264,8 +265,15 @@ select {
   outline: none;
 }
 
-.date-picker-wrapper-small {
-  width: auto;
+.date-picker-wrapper-small,
+.react-datepicker-wrapper,
+.react-datepicker__input-container {
+  display: flex !important;
+  align-items: center !important;
+  height: 38px !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .react-datepicker {
