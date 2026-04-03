@@ -309,7 +309,15 @@ const Calendar = () => {
     };
 
     const handleSaveSchedule = () => {
-        dispatch(saveSchedule({ scheduleData: schedule, token }))
+        // Filter out empty placeholders before saving
+        const cleanedSchedule = {
+            ...schedule,
+            sessions: schedule.sessions.map(s => ({
+                ...s,
+                assignments: s.assignments.filter(a => a.member_id !== '')
+            }))
+        };
+        dispatch(saveSchedule({ scheduleData: cleanedSchedule, token }))
             .unwrap()
             .then(() => {
                 toast.success("Schedule saved successfully!");
@@ -333,6 +341,13 @@ const Calendar = () => {
                             member_id: Number(id),
                             member_name: memberObj ? `${memberObj.first_name} ${memberObj.last_name}` : '',
                             member: memberObj
+                        });
+                    } else {
+                        newAssignments.push({
+                            role,
+                            member_id: '',
+                            member_name: '',
+                            member: null
                         });
                     }
                 });
@@ -961,7 +976,8 @@ const Calendar = () => {
                         </div>
 
                         <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
-                            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 0.5rem' }}>
+                            <div className="desktop-only-table">
+                                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 0.5rem' }}>
                                 <thead style={{ position: 'sticky', top: 0, background: '#0f172a', zIndex: 10 }}>
                                     <tr className="text-left text-slate-400 text-xs uppercase tracking-wider">
                                         <th className="px-4 py-2">Session</th>
@@ -1067,6 +1083,97 @@ const Calendar = () => {
                                     })}
                                 </tbody>
                             </table>
+                            </div>
+                            
+                            {/* Mobile responsive view */}
+                            <div className="mobile-card-list">
+                                {schedule?.sessions?.map(session => {
+                                    const sessionAvailability = availability?.sessions?.find(as => as.id === session.id);
+                                    return (
+                                        <div key={session.id} className="mobile-card">
+                                            <div className="mb-4 pb-2 border-b border-white/10">
+                                                <div className="text-white font-semibold">{moment(session.start_time).format('ddd, MMM D YYYY')}</div>
+                                                <div className="text-slate-500 text-xs uppercase font-bold">{session.type}</div>
+                                            </div>
+                                            <div className="flex flex-col gap-4">
+                                                {choirRoles.map(role => {
+                                                    const assignedMembers = session.assignments.filter(a => a.role === role);
+                                                    const memberIds = assignedMembers.map(a => a.member_id);
+                                                    if (memberIds.length === 0) memberIds.push('');
+                                                    
+                                                    return (
+                                                        <div key={role}>
+                                                            <label className="block text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">{role}</label>
+                                                            <div className="flex flex-col gap-2">
+                                                                {memberIds.map((currentMemberId, idx) => {
+                                                                    const isMemberUnavailable = currentMemberId && sessionAvailability?.availability?.find(av => av.id === currentMemberId)?.optedOut;
+                                                                    return (
+                                                                        <div key={`${role}-${idx}`} className="flex items-center gap-1 group">
+                                                                            <select
+                                                                                value={currentMemberId}
+                                                                                onChange={(e) => {
+                                                                                    const newIds = [...memberIds];
+                                                                                    newIds[idx] = e.target.value;
+                                                                                    handleUpdateRoleAssignments(session.id, role, newIds);
+                                                                                }}
+                                                                                className="transition-all duration-200"
+                                                                                style={{ 
+                                                                                    background: isMemberUnavailable ? 'rgba(239, 68, 68, 0.15)' : 'rgba(30, 41, 59, 0.5)', 
+                                                                                    border: `1px solid ${isMemberUnavailable ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                                                                    color: isMemberUnavailable ? '#fca5a5' : '#e2e8f0',
+                                                                                    width: '100%', 
+                                                                                    padding: '0.6rem 0.5rem', 
+                                                                                    borderRadius: '6px',
+                                                                                    fontSize: '0.85rem',
+                                                                                    fontWeight: isMemberUnavailable ? '600' : '400',
+                                                                                    outline: 'none',
+                                                                                    marginBottom: 0
+                                                                                }}
+                                                                            >
+                                                                                <option value="">Unassigned</option>
+                                                                                {members.map(m => {
+                                                                                    const isUnavailable = sessionAvailability?.availability?.find(av => av.id === m.id)?.optedOut;
+                                                                                    return (
+                                                                                        <option key={m.id} value={m.id} style={{ background: '#0f172a', color: 'white' }}>
+                                                                                            {m.first_name} {m.last_name} {isUnavailable ? ' (Unavailable)' : ''}
+                                                                                        </option>
+                                                                                    );
+                                                                                })}
+                                                                            </select>
+                                                                            {memberIds.length > 1 && (
+                                                                                <button 
+                                                                                    className="text-slate-500 hover:text-red-400 p-2"
+                                                                                    onClick={() => {
+                                                                                        const newIds = [...memberIds];
+                                                                                        newIds.splice(idx, 1);
+                                                                                        handleUpdateRoleAssignments(session.id, role, newIds);
+                                                                                    }}
+                                                                                >
+                                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                                <button
+                                                                    className="text-xs uppercase tracking-wider text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 transition-colors w-fit"
+                                                                    onClick={() => {
+                                                                        const newIds = [...memberIds, ''];
+                                                                        handleUpdateRoleAssignments(session.id, role, newIds);
+                                                                    }}
+                                                                >
+                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                                                                    Add {role}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         </div>
 
                         <div className="mt-8 flex gap-4 pt-6 border-t border-white/5">
