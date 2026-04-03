@@ -303,6 +303,7 @@ const Calendar = () => {
             .then(() => {
                 setIsGenerateModalOpen(false);
                 setIsSummaryModalOpen(true);
+                toast.success("Draft assignments created! Remember to 'Save Schedule' to finalize them.", { duration: 6000 });
             })
             .catch(err => toast.error("Generation failed: " + err));
     };
@@ -326,6 +327,7 @@ const Calendar = () => {
                     newAssignments.push({
                         role,
                         member_id: Number(memberId),
+                        member_name: memberObj ? `${memberObj.first_name} ${memberObj.last_name}` : '',
                         member: memberObj
                     });
                 }
@@ -463,7 +465,7 @@ const Calendar = () => {
                             style={{ flex: '1 1 auto', minWidth: '120px', textAlign: 'center' }}
                             className="bg-blue-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-blue-900/40 hover:bg-blue-700 transition font-medium text-sm"
                         >
-                            Auto-Generate
+                            Auto Generate Assignments
                         </button>
                     )}
                     {isTemplatesManage && (
@@ -508,7 +510,19 @@ const Calendar = () => {
             </div>
 
             {status === 'loading' && <p className="text-blue-500 mb-4">Loading calendar data...</p>}
-            {error && <p className="text-red-500 mb-4">{error}</p>}
+            {error && (
+                <div className="text-red-500 mb-4 p-4 bg-red-900/20 border border-red-900/40 rounded-xl text-sm">
+                    <strong>Error:</strong> {typeof error === 'string' ? error : (
+                        Array.isArray(error) ? (
+                            <ul className="list-disc ml-5 mt-1">
+                                {error.map((err, i) => (
+                                    <li key={i}>{`${err.loc?.join(' -> ') || ''}: ${err.msg || JSON.stringify(err)}`}</li>
+                                ))}
+                            </ul>
+                        ) : JSON.stringify(error)
+                    )}
+                </div>
+            )}
 
             <div className="glass-card calendar-container">
                 <BigCalendar
