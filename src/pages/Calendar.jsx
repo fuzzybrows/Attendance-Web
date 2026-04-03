@@ -318,19 +318,24 @@ const Calendar = () => {
             .catch(e => toast.error("Failed to save: " + e));
     };
 
-    const handleUpdateAssignment = (sessionId, role, memberId) => {
+    const handleUpdateRoleAssignments = (sessionId, role, newMemberIds) => {
         const newSessions = schedule.sessions.map(s => {
             if (s.id === sessionId) {
+                // remove all existing for this role
                 const newAssignments = s.assignments.filter(a => a.role !== role);
-                if (memberId) {
-                    const memberObj = members.find(m => m.id === Number(memberId));
-                    newAssignments.push({
-                        role,
-                        member_id: Number(memberId),
-                        member_name: memberObj ? `${memberObj.first_name} ${memberObj.last_name}` : '',
-                        member: memberObj
-                    });
-                }
+                
+                // add the new ones
+                newMemberIds.forEach(id => {
+                    if (id) {
+                        const memberObj = members.find(m => m.id === Number(id));
+                        newAssignments.push({
+                            role,
+                            member_id: Number(id),
+                            member_name: memberObj ? `${memberObj.first_name} ${memberObj.last_name}` : '',
+                            member: memberObj
+                        });
+                    }
+                });
                 return { ...s, assignments: newAssignments };
             }
             return s;
@@ -976,41 +981,84 @@ const Calendar = () => {
                                                     <div className="text-slate-500 text-[10px] uppercase font-bold tracking-tighter">{session.type}</div>
                                                 </td>
                                                 {roles.map(role => {
-                                                    const assignment = session.assignments.find(a => a.role === role);
-                                                    const currentMemberId = assignment?.member_id || '';
+                                                    const assignedMembers = session.assignments.filter(a => a.role === role);
+                                                    const memberIds = assignedMembers.map(a => a.member_id);
                                                     
-                                                    // Check for unavailability from the pre-fetched month availability
+                                                    // Ensure at least one slot exists
+                                                    if (memberIds.length === 0) {
+                                                        memberIds.push('');
+                                                    }
+                                                    
                                                     const sessionAvailability = availability?.sessions?.find(as => as.id === session.id);
-                                                    const isMemberUnavailable = currentMemberId && sessionAvailability?.availability?.find(av => av.id === currentMemberId)?.optedOut;
 
                                                     return (
-                                                        <td key={role} className="px-2 py-3">
-                                                            <select
-                                                                value={currentMemberId}
-                                                                onChange={(e) => handleUpdateAssignment(session.id, role, e.target.value)}
-                                                                className="transition-all duration-200"
-                                                                style={{ 
-                                                                    background: isMemberUnavailable ? 'rgba(239, 68, 68, 0.15)' : 'rgba(30, 41, 59, 0.5)', 
-                                                                    border: `1px solid ${isMemberUnavailable ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255,255,255,0.1)'}`,
-                                                                    color: isMemberUnavailable ? '#fca5a5' : '#e2e8f0',
-                                                                    width: '100%', 
-                                                                    padding: '0.4rem 0.5rem', 
-                                                                    borderRadius: '6px',
-                                                                    fontSize: '0.8rem',
-                                                                    fontWeight: isMemberUnavailable ? '600' : '400',
-                                                                    outline: 'none'
-                                                                }}
-                                                            >
-                                                                <option value="">Unassigned</option>
-                                                                {members.map(m => {
-                                                                    const isUnavailable = sessionAvailability?.availability?.find(av => av.id === m.id)?.optedOut;
+                                                        <td key={role} className="px-2 py-3 align-top">
+                                                            <div className="flex flex-col gap-2">
+                                                                {memberIds.map((currentMemberId, idx) => {
+                                                                    const isMemberUnavailable = currentMemberId && sessionAvailability?.availability?.find(av => av.id === currentMemberId)?.optedOut;
+
                                                                     return (
-                                                                        <option key={m.id} value={m.id} style={{ background: '#0f172a', color: 'white' }}>
-                                                                            {m.first_name} {m.last_name} {isUnavailable ? ' (Unavailable)' : ''}
-                                                                        </option>
+                                                                        <div key={`${role}-${idx}`} className="flex items-center gap-1 group">
+                                                                            <select
+                                                                                value={currentMemberId}
+                                                                                onChange={(e) => {
+                                                                                    const newIds = [...memberIds];
+                                                                                    newIds[idx] = e.target.value;
+                                                                                    handleUpdateRoleAssignments(session.id, role, newIds);
+                                                                                }}
+                                                                                className="transition-all duration-200"
+                                                                                style={{ 
+                                                                                    background: isMemberUnavailable ? 'rgba(239, 68, 68, 0.15)' : 'rgba(30, 41, 59, 0.5)', 
+                                                                                    border: `1px solid ${isMemberUnavailable ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                                                                    color: isMemberUnavailable ? '#fca5a5' : '#e2e8f0',
+                                                                                    width: '100%', 
+                                                                                    padding: '0.4rem 0.5rem', 
+                                                                                    borderRadius: '6px',
+                                                                                    fontSize: '0.8rem',
+                                                                                    fontWeight: isMemberUnavailable ? '600' : '400',
+                                                                                    outline: 'none'
+                                                                                }}
+                                                                            >
+                                                                                <option value="">Unassigned</option>
+                                                                                {members.map(m => {
+                                                                                    const isUnavailable = sessionAvailability?.availability?.find(av => av.id === m.id)?.optedOut;
+                                                                                    return (
+                                                                                        <option key={m.id} value={m.id} style={{ background: '#0f172a', color: 'white' }}>
+                                                                                            {m.first_name} {m.last_name} {isUnavailable ? ' (Unavailable)' : ''}
+                                                                                        </option>
+                                                                                    );
+                                                                                })}
+                                                                            </select>
+                                                                            {/* Remove button for extra slots */}
+                                                                            {memberIds.length > 1 && (
+                                                                                <button 
+                                                                                    className="text-slate-500 hover:text-red-400 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                    onClick={() => {
+                                                                                        const newIds = [...memberIds];
+                                                                                        newIds.splice(idx, 1);
+                                                                                        handleUpdateRoleAssignments(session.id, role, newIds);
+                                                                                    }}
+                                                                                    title="Remove assignment"
+                                                                                >
+                                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
                                                                     );
                                                                 })}
-                                                            </select>
+                                                                <div className="flex justify-start pl-1">
+                                                                    <button
+                                                                        className="text-[10px] uppercase tracking-wider text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 transition-colors"
+                                                                        onClick={() => {
+                                                                            const newIds = [...memberIds, ''];
+                                                                            handleUpdateRoleAssignments(session.id, role, newIds);
+                                                                        }}
+                                                                    >
+                                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                                                                        Add
+                                                                    </button>
+                                                                </div>
+                                                            </div>
                                                         </td>
                                                     );
                                                 })}
