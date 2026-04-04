@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { login, clearError } from '../store/authSlice';
+import ReCAPTCHA from 'react-google-recaptcha';
+import { toast } from 'react-hot-toast';
 
 function Login() {
     const [credentials, setCredentials] = useState({ login: '', password: '' });
+    const [recaptchaToken, setRecaptchaToken] = useState(null);
     const dispatch = useDispatch();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -19,7 +22,20 @@ function Login() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        dispatch(login({ login: credentials.login.trim(), password: credentials.password.trim() }));
+        
+        // Use a mock token if recaptcha fails to load or no site key is provided during dev
+        const finalToken = recaptchaToken || (import.meta.env.VITE_RECAPTCHA_SITE_KEY ? null : "mock_token");
+        
+        if (!finalToken) {
+            toast.error("Please complete the reCAPTCHA challenge");
+            return;
+        }
+        
+        dispatch(login({ 
+            login: credentials.login.trim(), 
+            password: credentials.password.trim(),
+            recaptcha_token: finalToken
+        }));
     };
 
     return (
@@ -41,6 +57,15 @@ function Login() {
                         onChange={e => setCredentials({ ...credentials, password: e.target.value })}
                         required
                     />
+                    
+                    <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+                        <ReCAPTCHA
+                            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"} // Public testing key as fallback
+                            onChange={setRecaptchaToken}
+                            theme="dark"
+                        />
+                    </div>
+                    
                     <button className="btn" style={{ width: '100%' }} disabled={loading}>
                         {loading ? 'Logging in...' : 'Login'}
                     </button>

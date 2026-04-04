@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 function ResetPassword() {
     const [step, setStep] = useState(1); // 1: Request, 2: Reset
@@ -10,14 +11,22 @@ function ResetPassword() {
     const [newPassword, setNewPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [recaptchaToken, setRecaptchaToken] = useState(null);
     const navigate = useNavigate();
 
     const handleRequest = async (e) => {
         e.preventDefault();
+        
+        const finalToken = recaptchaToken || (import.meta.env.VITE_RECAPTCHA_SITE_KEY ? null : "mock_token");
+        if (!finalToken) {
+            setError("Please complete the reCAPTCHA challenge");
+            return;
+        }
+
         setLoading(true);
         setError('');
         try {
-            const res = await axios.post('/auth/forgot-password', null, { params: { login } });
+            const res = await axios.post('/auth/forgot-password', { login, recaptcha_token: finalToken });
             toast.success(res.data.status);
             setStep(2);
         } catch (err) {
@@ -59,6 +68,15 @@ function ResetPassword() {
                             onChange={e => setLogin(e.target.value)}
                             required
                         />
+                        
+                        <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+                            <ReCAPTCHA
+                                sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"} // Public testing key
+                                onChange={setRecaptchaToken}
+                                theme="dark"
+                            />
+                        </div>
+
                         <button className="btn" style={{ width: '100%' }} disabled={loading}>
                             {loading ? 'Sending Code...' : 'Send Reset Code'}
                         </button>
