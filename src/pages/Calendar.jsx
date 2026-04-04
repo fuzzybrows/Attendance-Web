@@ -732,9 +732,14 @@ const Calendar = () => {
                                                                     <option value="">Unassigned</option>
                                                                     {members.map(m => {
                                                                         const isUnavailable = sessionAvailability?.availability?.find(av => av.id === m.id)?.optedOut;
+                                                                        const isNotSundayLead = role === 'lead_singer' && selectedEvent.start.getDay() === 0 && !m.roles?.includes('Sunday Lead Singer');
+                                                                        let labelExt = '';
+                                                                        if (isNotSundayLead) labelExt = ' (Not Sunday Lead)';
+                                                                        else if (isUnavailable) labelExt = ' (Unavailable)';
+
                                                                         return (
-                                                                            <option key={m.id} value={m.id} style={{ background: '#0f172a', color: 'white' }}>
-                                                                                {m.first_name} {m.last_name} {isUnavailable ? ' (Unavailable)' : ''}
+                                                                            <option key={m.id} value={m.id} disabled={isNotSundayLead} style={{ background: '#0f172a', color: isNotSundayLead ? '#64748b' : 'white' }}>
+                                                                                {m.first_name} {m.last_name}{labelExt}
                                                                             </option>
                                                                         );
                                                                     })}
@@ -1038,9 +1043,14 @@ const Calendar = () => {
                                                                                 <option value="">Unassigned</option>
                                                                                 {members.map(m => {
                                                                                     const isUnavailable = sessionAvailability?.availability?.find(av => av.id === m.id)?.optedOut;
+                                                                                    const isNotSundayLead = role === 'lead_singer' && new Date(session.start_time).getDay() === 0 && !m.roles?.includes('Sunday Lead Singer');
+                                                                                    let labelExt = '';
+                                                                                    if (isNotSundayLead) labelExt = ' (Not Sunday Lead)';
+                                                                                    else if (isUnavailable) labelExt = ' (Unavailable)';
+
                                                                                     return (
-                                                                                        <option key={m.id} value={m.id} style={{ background: '#0f172a', color: 'white' }}>
-                                                                                            {m.first_name} {m.last_name} {isUnavailable ? ' (Unavailable)' : ''}
+                                                                                        <option key={m.id} value={m.id} disabled={isNotSundayLead} style={{ background: '#0f172a', color: isNotSundayLead ? '#64748b' : 'white' }}>
+                                                                                            {m.first_name} {m.last_name}{labelExt}
                                                                                         </option>
                                                                                     );
                                                                                 })}
@@ -1133,9 +1143,14 @@ const Calendar = () => {
                                                                                 <option value="">Unassigned</option>
                                                                                 {members.map(m => {
                                                                                     const isUnavailable = sessionAvailability?.availability?.find(av => av.id === m.id)?.optedOut;
+                                                                                    const isNotSundayLead = role === 'lead_singer' && new Date(session.start_time).getDay() === 0 && !m.roles?.includes('Sunday Lead Singer');
+                                                                                    let labelExt = '';
+                                                                                    if (isNotSundayLead) labelExt = ' (Not Sunday Lead)';
+                                                                                    else if (isUnavailable) labelExt = ' (Unavailable)';
+
                                                                                     return (
-                                                                                        <option key={m.id} value={m.id} style={{ background: '#0f172a', color: 'white' }}>
-                                                                                            {m.first_name} {m.last_name} {isUnavailable ? ' (Unavailable)' : ''}
+                                                                                        <option key={m.id} value={m.id} disabled={isNotSundayLead} style={{ background: '#0f172a', color: isNotSundayLead ? '#64748b' : 'white' }}>
+                                                                                            {m.first_name} {m.last_name}{labelExt}
                                                                                         </option>
                                                                                     );
                                                                                 })}
