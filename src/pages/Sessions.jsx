@@ -388,7 +388,7 @@ function Sessions() {
                     {/* Filter Row */}
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                         {/* Search Filter */}
-                        <div style={{ position: 'relative', width: '280px' }}>
+                        <div style={{ position: 'relative', flex: '1 1 280px', minWidth: 'min(100%, 280px)' }}>
                             <input
                                 type="text"
                                 placeholder="Search sessions..."
@@ -405,19 +405,19 @@ function Sessions() {
                         </div>
                         
                         {/* Status Filter Buttons */}
-                        <div style={{ display: 'flex', gap: '0.3rem', background: 'rgba(255,255,255,0.05)', padding: '0px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', height: '38px', alignItems: 'center', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', gap: '0.3rem', background: 'rgba(255,255,255,0.05)', padding: '2px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)', minHeight: '38px', alignItems: 'center', flexWrap: 'wrap', maxWidth: '100%' }}>
                             {['all', ...availableStatuses].map(f => (
                                 <button
                                     key={f}
                                     className="btn"
                                     onClick={() => setStatusFilter(f)}
                                     style={{
-                                        padding: '0 1rem', fontSize: '0.85rem', height: '100%',
+                                        padding: '0.4rem 1rem', fontSize: '0.85rem', height: '34px', display: 'flex', alignItems: 'center',
                                         background: statusFilter === f ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
                                         border: 'none',
                                         color: statusFilter === f ? '#a5b4fc' : 'var(--text-secondary)',
-                                        borderRadius: 0, textTransform: 'capitalize', fontWeight: statusFilter === f ? 700 : 500,
-                                        transition: 'all 0.2s', margin: 0
+                                        borderRadius: '8px', textTransform: 'capitalize', fontWeight: statusFilter === f ? 700 : 500,
+                                        transition: 'all 0.2s', margin: 0, flexShrink: 0
                                     }}
                                 >
                                     {f}
@@ -443,27 +443,31 @@ function Sessions() {
                         </div>
 
                         {/* Date Range Filter */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0 0.875rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', height: '38px' }}>
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>From:</span>
-                            <DatePicker
-                                selected={startDate}
-                                onChange={(date) => setStartDate(date)}
-                                placeholderText="Start"
-                                className="date-picker-input-small"
-                                wrapperClassName="date-picker-wrapper-small"
-                                dateFormat="MMM d, yyyy"
-                                isClearable
-                            />
-                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>To:</span>
-                            <DatePicker
-                                selected={endDate}
-                                onChange={(date) => setEndDate(date)}
-                                placeholderText="End"
-                                className="date-picker-input-small"
-                                wrapperClassName="date-picker-wrapper-small"
-                                dateFormat="MMM d, yyyy"
-                                isClearable
-                            />
+                        <div style={{ display: 'flex', gap: '0.75rem', background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.875rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', minHeight: '38px', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>From:</span>
+                                <DatePicker
+                                    selected={startDate}
+                                    onChange={(date) => setStartDate(date)}
+                                    placeholderText="Start"
+                                    className="date-picker-input-small"
+                                    wrapperClassName="date-picker-wrapper-small"
+                                    dateFormat="MMM d, yyyy"
+                                    isClearable
+                                />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>To:</span>
+                                <DatePicker
+                                    selected={endDate}
+                                    onChange={(date) => setEndDate(date)}
+                                    placeholderText="End"
+                                    className="date-picker-input-small"
+                                    wrapperClassName="date-picker-wrapper-small"
+                                    dateFormat="MMM d, yyyy"
+                                    isClearable
+                                />
+                            </div>
                             {(startDate || endDate) && (
                                 <button 
                                     className="btn" 
