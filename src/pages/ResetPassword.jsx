@@ -97,6 +97,8 @@ function ResetPassword() {
                             placeholder="New Password"
                             value={newPassword}
                             onChange={e => setNewPassword(e.target.value)}
+                            pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$"
+                            title="Password must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, and a special character (@, $, !, %, *, ?, &, #)."
                             required
                         />
                         <button className="btn" style={{ width: '100%' }} disabled={loading}>
