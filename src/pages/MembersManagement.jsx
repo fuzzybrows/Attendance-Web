@@ -6,6 +6,27 @@ import Modal from '../components/Modal';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
+const generateSecurePassword = (length = 16) => {
+    const uppers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lowers = "abcdefghijklmnopqrstuvwxyz";
+    const numbers = "0123456789";
+    const specials = "@$!%*?&#";
+    const all = uppers + lowers + numbers + specials;
+    
+    let password = [
+        uppers[Math.floor(Math.random() * uppers.length)],
+        lowers[Math.floor(Math.random() * lowers.length)],
+        numbers[Math.floor(Math.random() * numbers.length)],
+        specials[Math.floor(Math.random() * specials.length)]
+    ];
+    
+    for (let i = 0; i < length - 4; i++) {
+        password.push(all[Math.floor(Math.random() * all.length)]);
+    }
+    
+    return password.sort(() => 0.5 - Math.random()).join('');
+};
+
 function MembersManagement() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -167,7 +188,7 @@ function MembersManagement() {
 
     const openResetPasswordModal = (member) => {
         setMemberToReset(member);
-        setNewPassword('');
+        setNewPassword(generateSecurePassword());
         setIsResetPasswordModalOpen(true);
     };
 
@@ -415,7 +436,15 @@ function MembersManagement() {
 
             {/* Reset Password Modal */}
             <Modal title={memberToReset ? `Reset Password for ${memberToReset.first_name}` : "Reset Password"} isOpen={isResetPasswordModalOpen} onClose={() => setIsResetPasswordModalOpen(false)} onSubmit={handleResetPassword} submitText="Reset Password" hideCancel>
-                <input type="password" placeholder="New Password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required style={{ marginBottom: 0 }} />
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: 0 }}>
+                    <input type="text" value={newPassword} readOnly style={{ marginBottom: 0, flex: 1, fontFamily: 'monospace', fontSize: '1.2rem', letterSpacing: '2px', textAlign: 'center', cursor: 'text' }} />
+                    <button type="button" className="btn" style={{ background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} onClick={() => {
+                        navigator.clipboard.writeText(newPassword);
+                        toast.success("Password copied to clipboard!");
+                    }}>
+                        Copy
+                    </button>
+                </div>
             </Modal>
         </div>
     );
