@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 
 function Login() {
     const [credentials, setCredentials] = useState({ login: '', password: '' });
+    const [showPassword, setShowPassword] = useState(false);
     const [recaptchaToken, setRecaptchaToken] = useState(null);
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -50,13 +51,37 @@ function Login() {
                         onChange={e => setCredentials({ ...credentials, login: e.target.value })}
                         required
                     />
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        value={credentials.password}
-                        onChange={e => setCredentials({ ...credentials, password: e.target.value })}
-                        required
-                    />
+                    <div style={{ position: 'relative' }}>
+                        <input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Password"
+                            value={credentials.password}
+                            onChange={e => setCredentials({ ...credentials, password: e.target.value })}
+                            required
+                            style={{ width: '100%', paddingRight: '2.5rem', marginBottom: '1rem' }}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            style={{
+                                position: 'absolute',
+                                right: '0.75rem',
+                                top: '40%',
+                                transform: 'translateY(-50%)',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: 0,
+                                fontSize: '1.2rem',
+                                opacity: 0.7,
+                                outline: 'none'
+                            }}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            title={showPassword ? "Hide password" : "Show password"}
+                        >
+                            {showPassword ? "🙈" : "👁️"}
+                        </button>
+                    </div>
                     
                     <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
                         <ReCAPTCHA

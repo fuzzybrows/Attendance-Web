@@ -93,6 +93,20 @@ function MembersManagement() {
         (m.email || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const handleCopyMember = (member) => {
+        setNewMember({
+            first_name: member.first_name,
+            last_name: member.last_name,
+            email: '',
+            phone_number: '',
+            password: '',
+            roles: [...(member.roles || [])],
+            permissions: [...(member.permissions || [])],
+            nfc_id: ''
+        });
+        setIsAddModalOpen(true);
+    };
+
     const handleAddMember = () => {
         dispatch(addMember({
             ...newMember,
@@ -268,7 +282,10 @@ function MembersManagement() {
                                     </span>
                                 </td>
                                 <td>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        {canCreateMembers && (
+                                            <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.2)' }} onClick={() => handleCopyMember(m)}>Copy</button>
+                                        )}
                                         {canEditMembers && (
                                             <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => openEditModal(m)}>Edit</button>
                                         )}
@@ -308,15 +325,18 @@ function MembersManagement() {
                                 <span key={r} className="status-badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', fontSize: '0.65rem', border: '1px solid rgba(165, 180, 252, 0.2)' }}>{r}</span>
                             ))}
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            {canEditMembers && (
-                                <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem' }} onClick={() => openEditModal(m)}>Edit Details</button>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {canCreateMembers && (
+                                <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem', background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.2)', minWidth: 'calc(50% - 0.5rem)' }} onClick={() => handleCopyMember(m)}>Copy</button>
                             )}
                             {canEditMembers && (
-                                <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)' }} onClick={() => openResetPasswordModal(m)}>Reset</button>
+                                <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem', minWidth: 'calc(50% - 0.5rem)' }} onClick={() => openEditModal(m)}>Edit Details</button>
+                            )}
+                            {canEditMembers && (
+                                <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)', minWidth: 'calc(50% - 0.5rem)' }} onClick={() => openResetPasswordModal(m)}>Reset</button>
                             )}
                             {canDeleteMembers && m.id !== user?.id && (
-                                <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }} onClick={() => {
+                                <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)', minWidth: 'calc(50% - 0.5rem)' }} onClick={() => {
                                     if (window.confirm(`Are you sure you want to delete ${m.first_name}?`)) {
                                         axios.delete(`/members/${m.id}`).then(() => dispatch(fetchMembers()));
                                     }
@@ -335,7 +355,17 @@ function MembersManagement() {
                 </div>
                 <input type="email" placeholder="Email Address" value={newMember.email} onChange={e => setNewMember({ ...newMember, email: e.target.value })} pattern="^[a-zA-Z0-9_.+\-]+@[a-zA-Z0-9\-]+\.[a-zA-Z0-9\-.]+$" title="Please enter a valid email address." required />
                 <input type="tel" placeholder="Phone (e.g. +1234567890)" value={newMember.phone_number} onChange={e => setNewMember({ ...newMember, phone_number: e.target.value })} pattern="^\+?[0-9]{10,15}$" title="Phone number should be 10-15 digits, optionally starting with a +." />
-                <input type="password" placeholder="Password" value={newMember.password} onChange={e => setNewMember({ ...newMember, password: e.target.value })} />
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <input type="text" placeholder="Password" value={newMember.password} onChange={e => setNewMember({ ...newMember, password: e.target.value })} style={{ marginBottom: 0, flex: 1 }} />
+                    <button type="button" className="btn" style={{ background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} onClick={() => {
+                        const pw = generateSecurePassword();
+                        setNewMember({ ...newMember, password: pw });
+                        navigator.clipboard.writeText(pw);
+                        toast.success("Password generated and copied!");
+                    }}>
+                        Generate & Copy
+                    </button>
+                </div>
                 <input placeholder="NFC ID (Optional)" value={newMember.nfc_id} onChange={e => setNewMember({ ...newMember, nfc_id: e.target.value })} />
 
                 <p style={{ margin: '1rem 0 0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Roles</p>
