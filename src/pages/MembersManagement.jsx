@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchMembers, addMember, updateMember } from '../store/membersSlice';
 import Modal from '../components/Modal';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 function MembersManagement() {
     const dispatch = useDispatch();
@@ -21,6 +22,9 @@ function MembersManagement() {
 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+    const [memberToReset, setMemberToReset] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
     const [editingMember, setEditingMember] = useState(null);
     const [newMember, setNewMember] = useState({
         first_name: '',
@@ -161,6 +165,30 @@ function MembersManagement() {
         }));
     };
 
+    const openResetPasswordModal = (member) => {
+        setMemberToReset(member);
+        setNewPassword('');
+        setIsResetPasswordModalOpen(true);
+    };
+
+    const handleResetPassword = (e) => {
+        e.preventDefault();
+        if (!newPassword || newPassword.trim() === '') {
+            toast.error("Password cannot be empty.");
+            return;
+        }
+        axios.post(`/members/${memberToReset.id}/reset-password`, { new_password: newPassword })
+            .then(() => {
+                toast.success(`Password successfully reset for ${memberToReset.first_name}.`);
+                setIsResetPasswordModalOpen(false);
+                setMemberToReset(null);
+                setNewPassword('');
+            })
+            .catch(err => {
+                toast.error("Failed to reset password: " + (err.response?.data?.detail || err.message));
+            });
+    };
+
     return (
         <div className="glass-card">
             <div className="flex-between" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -223,6 +251,9 @@ function MembersManagement() {
                                         {canEditMembers && (
                                             <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => openEditModal(m)}>Edit</button>
                                         )}
+                                        {canEditMembers && (
+                                            <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)' }} onClick={() => openResetPasswordModal(m)}>Reset Password</button>
+                                        )}
                                         {canDeleteMembers && m.id !== user?.id && (
                                             <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }} onClick={() => {
                                                 if (window.confirm(`Are you sure you want to delete ${m.first_name}?`)) {
@@ -259,6 +290,9 @@ function MembersManagement() {
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             {canEditMembers && (
                                 <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem' }} onClick={() => openEditModal(m)}>Edit Details</button>
+                            )}
+                            {canEditMembers && (
+                                <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)' }} onClick={() => openResetPasswordModal(m)}>Reset</button>
                             )}
                             {canDeleteMembers && m.id !== user?.id && (
                                 <button className="btn" style={{ flex: 1, padding: '0.6rem', fontSize: '0.9rem', background: 'rgba(239, 68, 68, 0.1)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }} onClick={() => {
@@ -377,6 +411,11 @@ function MembersManagement() {
                         </div>
                     </>
                 )}
+            </Modal>
+
+            {/* Reset Password Modal */}
+            <Modal title={memberToReset ? `Reset Password for ${memberToReset.first_name}` : "Reset Password"} isOpen={isResetPasswordModalOpen} onClose={() => setIsResetPasswordModalOpen(false)} onSubmit={handleResetPassword} submitText="Reset Password" hideCancel>
+                <input type="password" placeholder="New Password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required style={{ marginBottom: 0 }} />
             </Modal>
         </div>
     );
