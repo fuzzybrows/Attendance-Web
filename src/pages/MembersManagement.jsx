@@ -499,7 +499,12 @@ function MembersManagement() {
             {/* Reset Password Modal */}
             <Modal title={memberToReset ? `Reset Password for ${memberToReset.first_name}` : "Reset Password"} isOpen={isResetPasswordModalOpen} onClose={() => setIsResetPasswordModalOpen(false)} onSubmit={handleResetPassword} submitText="Reset Password" hideCancel>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: 0 }}>
-                    <input type="text" value={newPassword} readOnly style={{ marginBottom: 0, flex: 1, fontFamily: 'monospace', fontSize: '1.2rem', letterSpacing: '2px', textAlign: 'center', cursor: 'text' }} />
+                    <input 
+                        type="text" 
+                        value={newPassword} 
+                        onChange={e => setNewPassword(e.target.value)}
+                        style={{ marginBottom: 0, flex: 1, fontFamily: 'monospace', fontSize: '1.2rem', letterSpacing: '2px', textAlign: 'center', cursor: 'text' }} 
+                    />
                     <button type="button" className="btn" style={{ background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} onClick={() => {
                         navigator.clipboard.writeText(newPassword);
                         toast.success("Password copied to clipboard!");
