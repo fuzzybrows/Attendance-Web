@@ -55,7 +55,8 @@ function MembersManagement() {
         password: '',
         roles: [],
         permissions: ['member'],
-        nfc_id: ''
+        nfc_id: '',
+        is_active: true
     });
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -102,7 +103,8 @@ function MembersManagement() {
             password: '',
             roles: [...(member.roles || [])],
             permissions: [...(member.permissions || [])],
-            nfc_id: ''
+            nfc_id: '',
+            is_active: member.is_active ?? true
         });
         setIsAddModalOpen(true);
     };
@@ -117,7 +119,8 @@ function MembersManagement() {
             nfc_id: (newMember.nfc_id || '').trim() || null,
             password: (newMember.password || '').trim(),
             roles: newMember.roles || [],
-            permissions: newMember.permissions || ['member']
+            permissions: newMember.permissions || ['member'],
+            is_active: newMember.is_active ?? true
         }));
         setIsAddModalOpen(false);
         setNewMember({
@@ -128,7 +131,8 @@ function MembersManagement() {
             password: '',
             roles: [],
             permissions: ['member'],
-            nfc_id: ''
+            nfc_id: '',
+            is_active: true
         });
     };
 
@@ -141,7 +145,8 @@ function MembersManagement() {
             phone_number: member.phone_number || '',
             nfc_id: member.nfc_id || '',
             roles: member.roles || [],
-            permissions: member.permissions || ['member']
+            permissions: member.permissions || ['member'],
+            is_active: member.is_active ?? true
         });
         setIsEditModalOpen(true);
     };
@@ -157,7 +162,8 @@ function MembersManagement() {
                 phone_number: (editingMember.phone_number || '').trim() || null,
                 nfc_id: (editingMember.nfc_id || '').trim() || null,
                 roles: editingMember.roles || [],
-                permissions: editingMember.permissions || []
+                permissions: editingMember.permissions || [],
+                is_active: editingMember.is_active
             }
         }));
         setIsEditModalOpen(false);
@@ -265,8 +271,8 @@ function MembersManagement() {
                     </thead>
                     <tbody>
                         {filteredMembers.map(m => (
-                            <tr key={m.id}>
-                                <td>{m.first_name} {m.last_name}</td>
+                            <tr key={m.id} style={{ opacity: m.is_active !== false ? 1 : 0.6 }}>
+                                <td>{m.first_name} {m.last_name} {m.is_active === false && <span style={{fontSize:'0.75rem', color:'#f87171', marginLeft:'0.3rem'}}>(Disabled)</span>}</td>
                                 <td className="truncate-cell" title={m.email}>{m.email}</td>
                                 <td>{m.phone_number || 'N/A'}</td>
                                 <td>
@@ -309,10 +315,10 @@ function MembersManagement() {
 
             <div className="mobile-card-list">
                 {filteredMembers.map(m => (
-                    <div key={m.id} className="mobile-card">
+                    <div key={m.id} className="mobile-card" style={{ opacity: m.is_active !== false ? 1 : 0.7 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{m.first_name} {m.last_name}</h3>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{m.first_name} {m.last_name} {m.is_active === false && <span style={{fontSize:'0.75rem', color:'#f87171'}}>(Disabled)</span>}</h3>
                                 <p style={{ margin: '0.25rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{m.email}</p>
                                 {m.phone_number && <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{m.phone_number}</p>}
                             </div>
@@ -367,6 +373,19 @@ function MembersManagement() {
                     </button>
                 </div>
                 <input placeholder="NFC ID (Optional)" value={newMember.nfc_id} onChange={e => setNewMember({ ...newMember, nfc_id: e.target.value })} />
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                    <input 
+                        type="checkbox" 
+                        id="new_is_active" 
+                        checked={newMember.is_active} 
+                        onChange={e => setNewMember({ ...newMember, is_active: e.target.checked })} 
+                        style={{ margin: 0, width: 'auto' }} 
+                    />
+                    <label htmlFor="new_is_active" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', margin: 0 }}>
+                        Account is Active
+                    </label>
+                </div>
 
                 <p style={{ margin: '1rem 0 0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Roles</p>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
@@ -420,6 +439,19 @@ function MembersManagement() {
                         <input type="email" placeholder="Email Address" value={editingMember.email} onChange={e => setEditingMember({ ...editingMember, email: e.target.value })} pattern="^[a-zA-Z0-9_.+\-]+@[a-zA-Z0-9\-]+\.[a-zA-Z0-9\-.]+$" title="Please enter a valid email address." required />
                         <input type="tel" placeholder="Phone (e.g. +1234567890)" value={editingMember.phone_number} onChange={e => setEditingMember({ ...editingMember, phone_number: e.target.value })} pattern="^\+?[0-9]{10,15}$" title="Phone number should be 10-15 digits, optionally starting with a +." />
                         <input placeholder="NFC ID (Optional)" value={editingMember.nfc_id} onChange={e => setEditingMember({ ...editingMember, nfc_id: e.target.value })} />
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                            <input 
+                                type="checkbox" 
+                                id="edit_is_active" 
+                                checked={editingMember.is_active} 
+                                onChange={e => setEditingMember({ ...editingMember, is_active: e.target.checked })} 
+                                style={{ margin: 0, width: 'auto' }} 
+                            />
+                            <label htmlFor="edit_is_active" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', margin: 0 }}>
+                                Account is Active
+                            </label>
+                        </div>
 
                         <p style={{ margin: '1rem 0 0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Roles</p>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
