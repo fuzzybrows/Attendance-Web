@@ -50,28 +50,37 @@ function NotFound() {
   );
 }
 
+function AppRoutes() {
+  return (
+    <div className="container">
+      <Navigation />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/verify" element={<VerifyOTP />} />
+        <Route path="/forgot-password" element={<ResetPassword />} />
+        <Route path="/qr-attendance" element={<QRAttendance />} />
+
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+        <Route path="/members" element={<ProtectedRoute requiredPermission="admin"><MembersManagement /></ProtectedRoute>} />
+        <Route path="/sessions" element={<ProtectedRoute requiredPermission="admin"><Sessions /></ProtectedRoute>} />
+        <Route path="/stats" element={<ProtectedRoute requiredPermission="admin"><Statistics /></ProtectedRoute>} />
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </div>
+  );
+}
+
 function App() {
   return (
     <ErrorBoundary>
       <Router>
         <Toaster position="top-right" />
-        <div className="container">
-          <Navigation />
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/verify" element={<VerifyOTP />} />
-            <Route path="/forgot-password" element={<ResetPassword />} />
-            <Route path="/qr-attendance" element={<QRAttendance />} />
-
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-            <Route path="/members" element={<ProtectedRoute requiredPermission="admin"><MembersManagement /></ProtectedRoute>} />
-            <Route path="/sessions" element={<ProtectedRoute requiredPermission="admin"><Sessions /></ProtectedRoute>} />
-            <Route path="/stats" element={<ProtectedRoute requiredPermission="admin"><Statistics /></ProtectedRoute>} />
-
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </div>
+        <Routes>
+          <Route path="/health" element={<>OK</>} />
+          <Route path="/*" element={<AppRoutes />} />
+        </Routes>
       </Router>
     </ErrorBoundary>
   );
