@@ -312,8 +312,8 @@ function MembersManagement() {
                     <input placeholder="First Name" value={newMember.first_name} onChange={e => setNewMember({ ...newMember, first_name: e.target.value })} style={{ marginBottom: 0 }} />
                     <input placeholder="Last Name" value={newMember.last_name} onChange={e => setNewMember({ ...newMember, last_name: e.target.value })} style={{ marginBottom: 0 }} />
                 </div>
-                <input placeholder="Email Address" value={newMember.email} onChange={e => setNewMember({ ...newMember, email: e.target.value })} />
-                <input placeholder="Phone (e.g. +1234567890)" value={newMember.phone_number} onChange={e => setNewMember({ ...newMember, phone_number: e.target.value })} />
+                <input type="email" placeholder="Email Address" value={newMember.email} onChange={e => setNewMember({ ...newMember, email: e.target.value })} pattern="^[a-zA-Z0-9_.+\-]+@[a-zA-Z0-9\-]+\.[a-zA-Z0-9\-.]+$" title="Please enter a valid email address." required />
+                <input type="tel" placeholder="Phone (e.g. +1234567890)" value={newMember.phone_number} onChange={e => setNewMember({ ...newMember, phone_number: e.target.value })} pattern="^\+?[0-9]{10,15}$" title="Phone number should be 10-15 digits, optionally starting with a +." />
                 <input type="password" placeholder="Password" value={newMember.password} onChange={e => setNewMember({ ...newMember, password: e.target.value })} />
                 <input placeholder="NFC ID (Optional)" value={newMember.nfc_id} onChange={e => setNewMember({ ...newMember, nfc_id: e.target.value })} />
 
@@ -366,8 +366,8 @@ function MembersManagement() {
                             <input placeholder="First Name" value={editingMember.first_name} onChange={e => setEditingMember({ ...editingMember, first_name: e.target.value })} style={{ marginBottom: 0 }} />
                             <input placeholder="Last Name" value={editingMember.last_name} onChange={e => setEditingMember({ ...editingMember, last_name: e.target.value })} style={{ marginBottom: 0 }} />
                         </div>
-                        <input placeholder="Email Address" value={editingMember.email} onChange={e => setEditingMember({ ...editingMember, email: e.target.value })} />
-                        <input placeholder="Phone (e.g. +1234567890)" value={editingMember.phone_number} onChange={e => setEditingMember({ ...editingMember, phone_number: e.target.value })} />
+                        <input type="email" placeholder="Email Address" value={editingMember.email} onChange={e => setEditingMember({ ...editingMember, email: e.target.value })} pattern="^[a-zA-Z0-9_.+\-]+@[a-zA-Z0-9\-]+\.[a-zA-Z0-9\-.]+$" title="Please enter a valid email address." required />
+                        <input type="tel" placeholder="Phone (e.g. +1234567890)" value={editingMember.phone_number} onChange={e => setEditingMember({ ...editingMember, phone_number: e.target.value })} pattern="^\+?[0-9]{10,15}$" title="Phone number should be 10-15 digits, optionally starting with a +." />
                         <input placeholder="NFC ID (Optional)" value={editingMember.nfc_id} onChange={e => setEditingMember({ ...editingMember, nfc_id: e.target.value })} />
 
                         <p style={{ margin: '1rem 0 0.5rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Roles</p>
