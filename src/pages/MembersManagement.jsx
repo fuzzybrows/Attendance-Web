@@ -12,18 +12,18 @@ const generateSecurePassword = (length = 16) => {
     const numbers = "0123456789";
     const specials = "@$!%*?&#";
     const all = uppers + lowers + numbers + specials;
-    
+
     let password = [
         uppers[Math.floor(Math.random() * uppers.length)],
         lowers[Math.floor(Math.random() * lowers.length)],
         numbers[Math.floor(Math.random() * numbers.length)],
         specials[Math.floor(Math.random() * specials.length)]
     ];
-    
+
     for (let i = 0; i < length - 4; i++) {
         password.push(all[Math.floor(Math.random() * all.length)]);
     }
-    
+
     return password.sort(() => 0.5 - Math.random()).join('');
 };
 
@@ -32,7 +32,7 @@ function MembersManagement() {
     const navigate = useNavigate();
     const { items: members, loading } = useSelector(state => state.members);
     const { user } = useSelector(state => state.auth);
-    
+
     const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
     const canReadMembers = isAdmin || user?.permissions?.includes('members_read');
     const canCreateMembers = isAdmin || user?.permissions?.includes('members_create');
@@ -65,7 +65,7 @@ function MembersManagement() {
 
     useEffect(() => {
         dispatch(fetchMembers());
-        
+
         // Fetch metadata (roles and permissions)
         const fetchMetadata = async () => {
             try {
@@ -98,8 +98,8 @@ function MembersManagement() {
         setNewMember({
             first_name: member.first_name,
             last_name: member.last_name,
-            email: '',
-            phone_number: '',
+            email: member.email ? `copy${member.email}` : '',
+            phone_number: member.phone_number || '',
             password: '',
             roles: [...(member.roles || [])],
             permissions: [...(member.permissions || [])],
@@ -271,9 +271,9 @@ function MembersManagement() {
                     </thead>
                     <tbody>
                         {filteredMembers.map(m => (
-                            <tr key={m.id} style={{ opacity: m.is_active !== false ? 1 : 0.6 }}>
-                                <td>{m.first_name} {m.last_name} {m.is_active === false && <span style={{fontSize:'0.75rem', color:'#f87171', marginLeft:'0.3rem'}}>(Disabled)</span>}</td>
-                                <td className="truncate-cell" title={m.email}>{m.email}</td>
+                            <tr key={m.id} style={{ opacity: m.is_active !== false ? 1 : 0.6 }} data-testid={`member-row-${m.id}`}>
+                                <td data-testid={`member-name-${m.id}`}>{m.first_name} {m.last_name} {m.is_active === false && <span style={{ fontSize: '0.75rem', color: '#f87171', marginLeft: '0.3rem' }} data-testid="disabled-label">(Disabled)</span>}</td>
+                                <td className="truncate-cell" title={m.email} data-testid={`member-email-${m.id}`}>{m.email}</td>
                                 <td>{m.phone_number || 'N/A'}</td>
                                 <td>
                                     <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
@@ -318,7 +318,7 @@ function MembersManagement() {
                     <div key={m.id} className="mobile-card" style={{ opacity: m.is_active !== false ? 1 : 0.7 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{m.first_name} {m.last_name} {m.is_active === false && <span style={{fontSize:'0.75rem', color:'#f87171'}}>(Disabled)</span>}</h3>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)' }}>{m.first_name} {m.last_name} {m.is_active === false && <span style={{ fontSize: '0.75rem', color: '#f87171' }}>(Disabled)</span>}</h3>
                                 <p style={{ margin: '0.25rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{m.email}</p>
                                 {m.phone_number && <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{m.phone_number}</p>}
                             </div>
@@ -373,14 +373,14 @@ function MembersManagement() {
                     </button>
                 </div>
                 <input placeholder="NFC ID (Optional)" value={newMember.nfc_id} onChange={e => setNewMember({ ...newMember, nfc_id: e.target.value })} />
-                
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                    <input 
-                        type="checkbox" 
-                        id="new_is_active" 
-                        checked={newMember.is_active} 
-                        onChange={e => setNewMember({ ...newMember, is_active: e.target.checked })} 
-                        style={{ margin: 0, width: 'auto' }} 
+                    <input
+                        type="checkbox"
+                        id="new_is_active"
+                        checked={newMember.is_active}
+                        onChange={e => setNewMember({ ...newMember, is_active: e.target.checked })}
+                        style={{ margin: 0, width: 'auto' }}
                     />
                     <label htmlFor="new_is_active" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', margin: 0 }}>
                         Account is Active
@@ -439,14 +439,14 @@ function MembersManagement() {
                         <input type="email" placeholder="Email Address" value={editingMember.email} onChange={e => setEditingMember({ ...editingMember, email: e.target.value })} pattern="^[a-zA-Z0-9_.+\-]+@[a-zA-Z0-9\-]+\.[a-zA-Z0-9\-.]+$" title="Please enter a valid email address." required />
                         <input type="tel" placeholder="Phone (e.g. +1234567890)" value={editingMember.phone_number} onChange={e => setEditingMember({ ...editingMember, phone_number: e.target.value })} pattern="^\+?[0-9]{10,15}$" title="Phone number should be 10-15 digits, optionally starting with a +." />
                         <input placeholder="NFC ID (Optional)" value={editingMember.nfc_id} onChange={e => setEditingMember({ ...editingMember, nfc_id: e.target.value })} />
-                        
+
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                            <input 
-                                type="checkbox" 
-                                id="edit_is_active" 
-                                checked={editingMember.is_active} 
-                                onChange={e => setEditingMember({ ...editingMember, is_active: e.target.checked })} 
-                                style={{ margin: 0, width: 'auto' }} 
+                            <input
+                                type="checkbox"
+                                id="edit_is_active"
+                                checked={editingMember.is_active}
+                                onChange={e => setEditingMember({ ...editingMember, is_active: e.target.checked })}
+                                style={{ margin: 0, width: 'auto' }}
                             />
                             <label htmlFor="edit_is_active" style={{ fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', margin: 0 }}>
                                 Account is Active
@@ -499,11 +499,11 @@ function MembersManagement() {
             {/* Reset Password Modal */}
             <Modal title={memberToReset ? `Reset Password for ${memberToReset.first_name}` : "Reset Password"} isOpen={isResetPasswordModalOpen} onClose={() => setIsResetPasswordModalOpen(false)} onSubmit={handleResetPassword} submitText="Reset Password" hideCancel>
                 <div style={{ display: 'flex', gap: '0.5rem', marginBottom: 0 }}>
-                    <input 
-                        type="text" 
-                        value={newPassword} 
+                    <input
+                        type="text"
+                        value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
-                        style={{ marginBottom: 0, flex: 1, fontFamily: 'monospace', fontSize: '1.2rem', letterSpacing: '2px', textAlign: 'center', cursor: 'text' }} 
+                        style={{ marginBottom: 0, flex: 1, fontFamily: 'monospace', fontSize: '1.2rem', letterSpacing: '2px', textAlign: 'center', cursor: 'text' }}
                     />
                     <button type="button" className="btn" style={{ background: 'rgba(255,255,255,0.1)', flexShrink: 0 }} onClick={() => {
                         navigator.clipboard.writeText(newPassword);

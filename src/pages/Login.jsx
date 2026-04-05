@@ -63,6 +63,7 @@ function Login() {
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
+                            data-testid="show-password-toggle"
                             style={{
                                 position: 'absolute',
                                 right: '0.75rem',
