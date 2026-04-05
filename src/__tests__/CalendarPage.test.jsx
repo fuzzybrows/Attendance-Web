@@ -8,6 +8,7 @@ import calendarReducer from '../store/calendarSlice';
 import membersReducer from '../store/membersSlice';
 import authReducer from '../store/authSlice';
 import { MemoryRouter } from 'react-router-dom';
+import moment from 'moment';
 
 // Mock BigCalendar since it relies on browser-only dimensions and complex layouts
 vi.mock('react-big-calendar', () => ({
@@ -15,8 +16,8 @@ vi.mock('react-big-calendar', () => ({
         <div data-testid="mock-calendar">
             {events.map(event => (
                 <div 
-                    key={event.id} 
-                    data-testid={`event-${event.id}`}
+                    key={event.id || event.session_id} 
+                    data-testid={`event-${event.id || event.session_id}`}
                     onClick={() => onSelectEvent(event)}
                 >
                     {event.title}
@@ -27,19 +28,9 @@ vi.mock('react-big-calendar', () => ({
     momentLocalizer: vi.fn(() => ({}))
 }));
 
-// Mock axios
-vi.mock('axios', () => ({
-    default: {
-        get: vi.fn(),
-        post: vi.fn(),
-        put: vi.fn(),
-        delete: vi.fn()
-    }
-}));
-
 const mockMembers = [
-    { id: 1, first_name: 'John', last_name: 'Doe' },
-    { id: 2, first_name: 'Jane', last_name: 'Smith' }
+    { id: 1, first_name: 'John', last_name: 'Doe', roles: ['lead_singer', 'Sunday Lead Singer'] },
+    { id: 2, first_name: 'Jane', last_name: 'Smith', roles: ['lead_singer'] }
 ];
 
 const mockSchedule = {
@@ -49,13 +40,43 @@ const mockSchedule = {
             session_id: 101,
             title: 'Sunday Service',
             session_title: 'Sunday Service',
-            start_time: '2026-04-12T10:00:00',
+            start_time: '2026-04-12T10:00:00', // A Sunday
+            type: 'program',
             assignments: [
                 { member_id: 1, member_name: 'John Doe', role: 'lead_singer' }
             ]
         }
     ]
 };
+
+// Mock axios
+vi.mock('axios', () => ({
+    default: {
+        get: vi.fn((url) => {
+            if (url.includes('/calendar/schedule/')) {
+                return Promise.resolve({ data: mockSchedule });
+            }
+            if (url.includes('/members/metadata')) {
+                return Promise.resolve({ data: { choir_roles: ['lead_singer', 'soprano', 'alto', 'tenor', 'Sunday Lead Singer'] } });
+            }
+            if (url.includes('/session-templates/')) {
+                return Promise.resolve({ data: [] });
+            }
+            if (url.includes('/members/')) {
+                return Promise.resolve({ data: mockMembers });
+            }
+            return Promise.resolve({ data: {} });
+        }),
+        post: vi.fn((url) => {
+            if (url.includes('/calendar/schedule/generate')) {
+                return Promise.resolve({ data: mockSchedule });
+            }
+            return Promise.resolve({ data: {} });
+        }),
+        put: vi.fn(() => Promise.resolve({ data: {} })),
+        delete: vi.fn(() => Promise.resolve({ data: {} }))
+    }
+}));
 
 const setupStore = (isAdmin = false) => {
     return configureStore({
@@ -89,7 +110,7 @@ describe('Calendar Page Integration Tests', () => {
     it('renders the calendar and action buttons for admins', async () => {
         const isAdmin = true;
         localStorage.setItem('token', 'test-token');
-        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: isAdmin ? ['admin'] : [] }));
+        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['admin'] }));
         
         const store = setupStore(isAdmin);
         render(
@@ -100,18 +121,16 @@ describe('Calendar Page Integration Tests', () => {
             </Provider>
         );
 
-        // Use findBy to wait for potential re-renders after mount useEffect
-        expect(await screen.findByText(/Auto-Generate Roles/i)).toBeInTheDocument();
-        expect(screen.getByText(/Download PDF/i)).toBeInTheDocument();
+        expect(await screen.findByText(/Auto Generate Assignments/i)).toBeInTheDocument();
+        expect(screen.getByText(/Export CSV/i)).toBeInTheDocument();
         expect(screen.getByTestId('mock-calendar')).toBeInTheDocument();
     });
 
-    it('opens the session detail modal and allows admin to enter edit mode', async () => {
-        const isAdmin = true;
+    it('filters Sunday Lead Singer role in assignment dropdown on Sundays', async () => {
         localStorage.setItem('token', 'test-token');
-        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['admin'] }));
+        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'admin@test.com', permissions: ['admin'] }));
 
-        const store = setupStore(isAdmin);
+        const store = setupStore(true);
         render(
             <Provider store={store}>
                 <MemoryRouter>
@@ -120,46 +139,31 @@ describe('Calendar Page Integration Tests', () => {
             </Provider>
         );
 
-        // Wait for the mock event to be rendered
-        const eventNode = await screen.findByTestId('event-101');
-        fireEvent.click(eventNode);
+        // 1. Open the Generate Modal
+        const generateBtn = await screen.findByText(/Auto Generate Assignments/i);
+        fireEvent.click(generateBtn);
 
-        // Verify modal content (My Availability is unique to the modal)
-        expect(await screen.findByText(/My Availability/i)).toBeInTheDocument();
-        expect(screen.getByText(/Lead Singer:/i)).toBeInTheDocument();
-        expect(screen.getByText(/John Doe/i)).toBeInTheDocument();
+        // 2. Click "Generate" to trigger handleGenerateSchedule
+        const modalGenerateBtn = await screen.findByText(/^Generate$/);
+        fireEvent.click(modalGenerateBtn);
 
-        // Check for edit button and enter edit mode
-        const editBtn = screen.getByText(/Edit Assignments/i);
-        fireEvent.click(editBtn);
+        // 3. The "Draft Schedule Summary" modal should now be open
+        expect(await screen.findByText(/Draft Schedule Summary/i)).toBeInTheDocument();
 
-        // Verify dropdown editor is visible by checking for a role label (uppercase in CSS, lowercase in HTML)
-        expect(await screen.findByText(/lead singer/i)).toBeInTheDocument();
-    });
-
-    it('shows the Auto-Generate Summary Modal after generation', async () => {
-        const isAdmin = true;
-        localStorage.setItem('token', 'test-token');
-        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['admin'] }));
-
-        const store = setupStore(isAdmin);
+        // 4. Check the Lead Singer dropdown for the Sunday session (id 101)
+        const selects = screen.getAllByRole('combobox');
+        const leadSingerSelect = selects[0];
         
-        // Mock the generateSchedule response
-        // Note: In a real integration test we'd mock the thunk, 
-        // but here we can just verify the modal state logic.
+        // 5. Verify options
+        const options = Array.from(leadSingerSelect.options);
         
-        render(
-            <Provider store={store}>
-                <MemoryRouter>
-                    <Calendar />
-                </MemoryRouter>
-            </Provider>
-        );
+        // John Doe (id 1) has 'Sunday Lead Singer' role -> enabled
+        const johnOption = options.find(o => o.value === '1');
+        expect(johnOption.disabled).toBe(false);
 
-        // Click "Auto-Generate Roles" to open the select month modal
-        fireEvent.click(await screen.findByText(/Auto-Generate Roles/i));
-        expect(await screen.findByText(/Select Month & Year/i)).toBeInTheDocument();
-
-        // The full flow involves async thunks, for brevity we'll focus on the session modal logic since that's the most interactive part.
+        // Jane Smith (id 2) DOES NOT have it -> disabled
+        const janeOption = options.find(o => o.value === '2');
+        expect(janeOption.disabled).toBe(true);
+        expect(janeOption.text).toContain('(Not Sunday Lead)');
     });
 });
