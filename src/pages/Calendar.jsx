@@ -414,8 +414,12 @@ const Calendar = () => {
 
     const handleConnectGoogle = async () => {
         try {
+            // Pass this client's absolute URL so the backend knows where to redirect back to.
+            // This allows any number of web deployments (prod, staging, etc.) to work correctly.
+            const appRedirect = `${window.location.origin}/calendar`;
             const res = await axios.get('/auth/google/login', {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
+                params: { app_redirect: appRedirect }
             });
             window.location.href = res.data.auth_url;
         } catch (err) {
