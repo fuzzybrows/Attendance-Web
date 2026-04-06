@@ -249,9 +249,13 @@ const Calendar = () => {
             .catch((err) => toast.error("Failed to update availability: " + err));
     };
 
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
     const handleSelectSlot = ({ slots, action }) => {
         if (isMonthLocked) return;
-        // action can be 'select' or 'click'
+        // On touch devices, block multi-day drag-to-select but allow single-day taps
+        const uniqueSlotDays = new Set(slots.map(d => d.toDateString())).size;
+        if (isTouchDevice && action === 'select' && uniqueSlotDays > 1) return;
         console.log("Slot selected:", { slots, action, isMultiSelectMode });
         
         // Extract unique local dates
