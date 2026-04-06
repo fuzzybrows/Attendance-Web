@@ -23,6 +23,7 @@ function Sessions() {
     const { items: members } = useSelector(state => state.members);
     const { user } = useSelector(state => state.auth);
     const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
+    const tzName = React.useMemo(() => new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || 'CDT', []);
     const isSessionsRead = isAdmin || user?.permissions?.includes('sessions_read');
     const isSessionsCreate = isAdmin || user?.permissions?.includes('sessions_create');
     const isSessionsEdit = isAdmin || user?.permissions?.includes('sessions_edit');
@@ -545,7 +546,7 @@ function Sessions() {
                             <input autoFocus placeholder="e.g. Sunday Service" value={newSessionData.title} onChange={e => setNewSessionData({ ...newSessionData, title: e.target.value })} style={{ width: '100%' }} />
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled Start Time</label>
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled Start Time ({tzName})</label>
                             <DatePicker
                                 selected={newSessionData.start_time}
                                 onChange={(date) => setNewSessionData({ ...newSessionData, start_time: date })}
@@ -556,7 +557,7 @@ function Sessions() {
                             />
                         </div>
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled End Time</label>
+                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled End Time ({tzName})</label>
                             <DatePicker
                                 selected={newSessionData.end_time}
                                 onChange={(date) => setNewSessionData({ ...newSessionData, end_time: date })}
@@ -702,7 +703,7 @@ function Sessions() {
                                 <input placeholder="Session Title" value={editSessionData.title} onChange={e => setEditSessionData({ ...editSessionData, title: e.target.value })} style={{ width: '100%' }} />
                             </div>
                             <div>
-                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled Start Time</label>
+                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled Start Time ({tzName})</label>
                                 <DatePicker
                                     selected={editSessionData.start_time}
                                     onChange={(date) => setEditSessionData({ ...editSessionData, start_time: date })}
@@ -713,7 +714,7 @@ function Sessions() {
                                 />
                             </div>
                             <div>
-                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled End Time</label>
+                                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled End Time ({tzName})</label>
                                 <DatePicker
                                     selected={editSessionData.end_time}
                                     onChange={(date) => setEditSessionData({ ...editSessionData, end_time: date })}

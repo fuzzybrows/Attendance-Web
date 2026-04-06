@@ -53,6 +53,8 @@ const Calendar = () => {
     const jsDayInit = new Date(todayStr + 'T00:00:00').getDay();
     const initDayOfWeek = jsDayInit === 0 ? 6 : jsDayInit - 1;
 
+    const tzName = useMemo(() => new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || 'CDT', []);
+
     const [templates, setTemplates] = useState([]);
     const [deletingTemplateId, setDeletingTemplateId] = useState(null);
     const [newTemplate, setNewTemplate] = useState({
@@ -621,7 +623,7 @@ const Calendar = () => {
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: '#f8fafc' }}>{selectedEvent.title}</h2>
                             <button onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
                         </div>
-                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '1rem' }}>{selectedEvent.start.toLocaleString()}</p>
+                        <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '1rem' }}>{selectedEvent.start.toLocaleString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</p>
 
                         {selectedEvent.is_external ? (
                             <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -1006,7 +1008,9 @@ const Calendar = () => {
                                         return (
                                             <tr key={session.id} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
                                                 <td className="px-4 py-3">
-                                                    <div className="text-white font-semibold text-sm">{moment(session.start_time).format('ddd, MMM D')}</div>
+                                                    <div className="text-white font-semibold text-sm">
+                                                        {new Date(session.start_time).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
+                                                    </div>
                                                     <div className="text-slate-500 text-[10px] uppercase font-bold tracking-tighter">{session.type}</div>
                                                 </td>
                                                 {roles.map(role => {
@@ -1110,7 +1114,9 @@ const Calendar = () => {
                                     return (
                                         <div key={session.id} className="mobile-card">
                                             <div className="mb-4 pb-2 border-b border-white/10">
-                                                <div className="text-white font-semibold">{moment(session.start_time).format('ddd, MMM D YYYY')}</div>
+                                                <div className="text-white font-semibold">
+                                                    {new Date(session.start_time).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
+                                                </div>
                                                 <div className="text-slate-500 text-xs uppercase font-bold">{session.type}</div>
                                             </div>
                                             <div className="flex flex-col gap-4">
@@ -1241,7 +1247,7 @@ const Calendar = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <div>
                                 <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: '#f8fafc' }}>Recurring Sessions</h2>
-                                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Automate your weekly rehearsals and services</p>
+                                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Automate your weekly rehearsals and services (Times in {tzName})</p>
                             </div>
                             <button onClick={() => setIsRecurringModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
                         </div>
@@ -1271,9 +1277,9 @@ const Calendar = () => {
                                                 </div>
                                                 <div style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'capitalize' }}>
                                                     {t.frequency === 'daily' ? (
-                                                        `Daily at ${t.start_time.substring(0, 5)}`
+                                                        `Daily at ${t.start_time.substring(0, 5)} ${tzName}`
                                                     ) : (
-                                                        `${t.frequency || 'Weekly'} on ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][t.day_of_week]} at ${t.start_time.substring(0, 5)}`
+                                                        `${t.frequency || 'Weekly'} on ${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][t.day_of_week]} at ${t.start_time.substring(0, 5)} ${tzName}`
                                                     )}
                                                 </div>
                                             </div>
@@ -1369,7 +1375,7 @@ const Calendar = () => {
                                         />
                                     </div>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                         <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>Inferred Day of Week</span>
                                         <select 
@@ -1383,7 +1389,7 @@ const Calendar = () => {
                                         </select>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>Start Time</span>
+                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>Start Time ({tzName})</span>
                                         <input 
                                             type="time" 
                                             value={newTemplate.start_time.substring(0, 5)} 
@@ -1392,7 +1398,7 @@ const Calendar = () => {
                                         />
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>End Time</span>
+                                        <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '0.25rem' }}>End Time ({tzName})</span>
                                         <input 
                                             type="time" 
                                             value={(newTemplate.end_time || '20:00:00').substring(0, 5)} 
@@ -1410,6 +1416,7 @@ const Calendar = () => {
                                             const currentJsDay = new Date(currentTodayStr + 'T00:00:00').getDay();
                                             const currentInitDayOfWeek = currentJsDay === 0 ? 6 : currentJsDay - 1;
                                             setNewTemplate({ title: '', type: 'rehearsal', frequency: 'weekly', reference_start_date: currentTodayStr, day_of_week: currentInitDayOfWeek, start_time: '18:00:00', end_time: '20:00:00' });
+                                            toast.success("Template created!");
                                         } catch (e) { toast.error("Failed to add template"); }
                                     }}
                                     style={{ background: '#6366f1', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}

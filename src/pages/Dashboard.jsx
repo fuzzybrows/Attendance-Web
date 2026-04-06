@@ -562,7 +562,7 @@ function Dashboard() {
                                                         </td>
                                                         <td>{memberName}</td>
                                                         <td>
-                                                            {new Date(a.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date(a.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                                                            {new Date(a.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
                                                         </td>
                                                         <td><span className={`status-badge status-${a.submission_type}`}>{a.submission_type}</span></td>
                                                         <td>{markedBy ? `${markedBy.first_name} ${markedBy.last_name}` : 'Self'}</td>
@@ -732,7 +732,7 @@ function Dashboard() {
                                         memberHistory.map(h => (
                                             <tr key={h.id}>
                                                 <td>
-                                                    {new Date(h.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date(h.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                                                    {new Date(h.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
                                                 </td>
                                                 <td>{h.session?.title || 'Unknown Session'}</td>
                                                 <td>{h.session?.type || 'N/A'}</td>

@@ -131,10 +131,21 @@ const Statistics = () => {
                         <div>
                             <h3>Recent History</h3>
                             <ul style={{ listStyle: 'none', padding: 0 }}>
-                                {memberDetail.history.slice(0, 5).map((h, i) => (
-                                    <li key={i} style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>{h.session_title}</span>
-                                        <span className={`status-badge status-${h.status === 'prompt' ? 'manual' : 'nfc'}`} style={{ background: h.status === 'prompt' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: h.status === 'prompt' ? '#10b981' : '#ef4444' }}>
+                                {memberDetail.history.slice(0, 10).map((h, i) => (
+                                    <li key={i} style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                                            <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{h.session_title}</span>
+                                            <small style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                                                {h.session_date ? new Date(h.session_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }) : 'N/A'}
+                                            </small>
+                                        </div>
+                                        <span className={`status-badge status-${h.status === 'prompt' ? 'manual' : 'nfc'}`} style={{ 
+                                            background: h.status === 'prompt' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', 
+                                            color: h.status === 'prompt' ? '#10b981' : '#ef4444',
+                                            border: `1px solid ${h.status === 'prompt' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                                            minWidth: '70px',
+                                            textAlign: 'center'
+                                        }}>
                                             {h.status}
                                         </span>
                                     </li>
