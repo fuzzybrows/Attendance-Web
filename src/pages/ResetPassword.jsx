@@ -41,7 +41,7 @@ function ResetPassword() {
         setLoading(true);
         setError('');
         try {
-            await axios.post('/auth/reset-password', { login, otp }, { params: { new_password: newPassword } });
+            await axios.post('/auth/reset-password', { login, otp, new_password: newPassword });
             toast.success('Password reset successfully!');
             navigate('/login');
         } catch (err) {
