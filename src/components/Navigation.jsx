@@ -20,7 +20,7 @@ const Navigation = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <NavLink to="/" onClick={closeMenu} style={({ isActive }) => ({ color: isActive ? 'var(--primary-color)' : 'var(--text-secondary)', textDecoration: 'none', fontWeight: 600, fontSize: '1.1rem' })}>
-                        Attendance
+                        {import.meta.env.VITE_APP_TITLE || 'Attendance'}
                     </NavLink>
                 </div>
 
