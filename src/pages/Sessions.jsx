@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchMembers } from '../store/membersSlice';
-import { fetchSessions, deleteSession, bulkDeleteSessions, updateSessionStatus, setCurrentSession, updateSession, addSession } from '../store/sessionsSlice';
+import { fetchSessions, deleteSession, bulkDeleteSessions, updateSessionStatus, setCurrentSession, updateSession } from '../store/sessionsSlice';
 import Modal from '../components/Modal';
+import AddSessionModal from '../components/AddSessionModal';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from 'axios';
@@ -44,13 +45,6 @@ function Sessions() {
 
     // Add Session Modal State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [newSessionData, setNewSessionData] = useState({
-        title: '',
-        type: 'rehearsal',
-        status: 'scheduled',
-        start_time: new Date(),
-        end_time: new Date(Date.now() + 2 * 60 * 60 * 1000)
-    });
 
     // View/Edit Modal State
     const [viewSession, setViewSession] = useState(null);
@@ -245,21 +239,7 @@ function Sessions() {
         setViewSession(null);
     };
 
-    const handleAddSession = () => {
-        if (!newSessionData.title.trim()) {
-            toast.error('Session title is required');
-            return;
-        }
-        const payload = {
-            ...newSessionData,
-            title: newSessionData.title.trim(),
-            start_time: newSessionData.start_time.toISOString(),
-            end_time: newSessionData.end_time.toISOString(),
-        };
-        dispatch(addSession(payload));
-        setIsAddModalOpen(false);
-        setNewSessionData({ title: '', type: 'rehearsal', status: 'scheduled', start_time: new Date(), end_time: new Date(Date.now() + 2 * 60 * 60 * 1000) });
-    };
+
 
     const renderGroup = (title, items, statusKey) => {
         if (items.length === 0) return null;
@@ -532,64 +512,12 @@ function Sessions() {
             </div>
 
             {/* Add Session Modal */}
-            {isAddModalOpen && (
-                <Modal
-                    title="Add New Session"
-                    isOpen={isAddModalOpen}
-                    onClose={() => setIsAddModalOpen(false)}
-                    onSubmit={handleAddSession}
-                    hideFooter
-                >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Session Title</label>
-                            <input autoFocus placeholder="e.g. Sunday Service" value={newSessionData.title} onChange={e => setNewSessionData({ ...newSessionData, title: e.target.value })} style={{ width: '100%' }} />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled Start Time ({tzName})</label>
-                            <DatePicker
-                                selected={newSessionData.start_time}
-                                onChange={(date) => setNewSessionData({ ...newSessionData, start_time: date })}
-                                showTimeSelect
-                                dateFormat="Pp"
-                                className="date-picker-input"
-                                wrapperClassName="date-picker-wrapper"
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Scheduled End Time ({tzName})</label>
-                            <DatePicker
-                                selected={newSessionData.end_time}
-                                onChange={(date) => setNewSessionData({ ...newSessionData, end_time: date })}
-                                showTimeSelect
-                                dateFormat="Pp"
-                                className="date-picker-input"
-                                wrapperClassName="date-picker-wrapper"
-                            />
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Session Type</label>
-                            <select value={newSessionData.type} onChange={e => setNewSessionData({ ...newSessionData, type: e.target.value })} style={{ width: '100%' }}>
-                                {availableTypes.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Status</label>
-                            <select value={newSessionData.status} onChange={e => setNewSessionData({ ...newSessionData, status: e.target.value })} style={{ width: '100%' }}>
-                                {availableStatuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-                            </select>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
-                            <button type="button" className="btn" style={{ background: 'transparent', border: '1px solid var(--text-secondary)' }} onClick={() => setIsAddModalOpen(false)}>
-                                Cancel
-                            </button>
-                            <button type="button" className="btn" style={{ background: 'var(--primary-color)', color: 'white' }} onClick={handleAddSession}>
-                                Add Session
-                            </button>
-                        </div>
-                    </div>
-                </Modal>
-            )}
+            <AddSessionModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                availableTypes={availableTypes}
+                availableStatuses={availableStatuses}
+            />
 
             {/* View/Edit Modal */}
             {viewSession && (
@@ -661,34 +589,74 @@ function Sessions() {
                                 ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                         {['lead_singer', 'soprano', 'alto', 'tenor'].map(role => {
-                                            const roleAssign = editedAssignments.find(a => a.role === role);
+                                            const roleAssigns = editedAssignments.filter(a => a.role === role);
+                                            if (roleAssigns.length === 0) roleAssigns.push(null); // ensure at least one empty slot
                                             return (
-                                                <div key={role} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                                                    <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'capitalize', width: '100px' }}>{role.replace('_', ' ')}</label>
-                                                    <select 
-                                                        style={{ flex: 1, padding: '0.4rem', fontSize: '0.9rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '6px' }}
-                                                        value={roleAssign ? roleAssign.member_id : ''}
-                                                        onChange={e => {
-                                                            const memberId = e.target.value;
-                                                            let nextAssignments = editedAssignments.filter(a => a.role !== role);
-                                                            if (memberId) {
-                                                                const sMember = members.find(m => m.id === parseInt(memberId));
-                                                                if (sMember) {
-                                                                    nextAssignments.push({
-                                                                        member_id: sMember.id,
-                                                                        member_name: `${sMember.first_name} ${sMember.last_name}`,
-                                                                        role: role
-                                                                    });
-                                                                }
-                                                            }
-                                                            setEditedAssignments(nextAssignments);
-                                                        }}
-                                                    >
-                                                        <option value="">-- Unassigned --</option>
-                                                        {members.map(m => (
-                                                            <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                                                <div key={role} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                                                    <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'capitalize', width: '100px', paddingTop: '0.45rem', flexShrink: 0 }}>{role.replace('_', ' ')}</label>
+                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                        {roleAssigns.map((assign, idx) => (
+                                                            <div key={`${role}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                                <select 
+                                                                    style={{ flex: 1, padding: '0.4rem', fontSize: '0.9rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '6px', margin: 0 }}
+                                                                    value={assign ? assign.member_id : ''}
+                                                                    onChange={e => {
+                                                                        const memberId = e.target.value;
+                                                                        // Remove this specific slot
+                                                                        let nextAssignments = [...editedAssignments];
+                                                                        if (assign) {
+                                                                            const removeIdx = nextAssignments.findIndex(a => a.role === role && a.member_id === assign.member_id);
+                                                                            if (removeIdx !== -1) nextAssignments.splice(removeIdx, 1);
+                                                                        }
+                                                                        // Add new selection
+                                                                        if (memberId) {
+                                                                            const sMember = members.find(m => m.id === parseInt(memberId));
+                                                                            if (sMember) {
+                                                                                nextAssignments.push({
+                                                                                    member_id: sMember.id,
+                                                                                    member_name: `${sMember.first_name} ${sMember.last_name}`,
+                                                                                    role: role
+                                                                                });
+                                                                            }
+                                                                        }
+                                                                        setEditedAssignments(nextAssignments);
+                                                                    }}
+                                                                >
+                                                                    <option value="">-- Unassigned --</option>
+                                                                    {members.map(m => (
+                                                                        <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+                                                                    ))}
+                                                                </select>
+                                                                {roleAssigns.length > 1 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            if (assign) {
+                                                                                const nextAssignments = [...editedAssignments];
+                                                                                const removeIdx = nextAssignments.findIndex(a => a.role === role && a.member_id === assign.member_id);
+                                                                                if (removeIdx !== -1) nextAssignments.splice(removeIdx, 1);
+                                                                                setEditedAssignments(nextAssignments);
+                                                                            }
+                                                                        }}
+                                                                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.25rem', fontSize: '1rem', lineHeight: 1 }}
+                                                                        title="Remove assignee"
+                                                                    >
+                                                                        ×
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         ))}
-                                                    </select>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                // Add an empty placeholder assignment for this role
+                                                                setEditedAssignments([...editedAssignments, { member_id: '', member_name: '', role: role }]);
+                                                            }}
+                                                            style={{ background: 'transparent', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, padding: '0.2rem 0', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.25rem', width: 'fit-content' }}
+                                                        >
+                                                            <span style={{ fontSize: '0.9rem' }}>+</span> Add {role.replace('_', ' ')}
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             );
                                         })}

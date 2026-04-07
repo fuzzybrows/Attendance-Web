@@ -2,9 +2,10 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchMembers, addMember } from '../store/membersSlice';
-import { fetchSessions, addSession, setCurrentSession, deleteSession, bulkDeleteSessions } from '../store/sessionsSlice';
+import { fetchSessions, setCurrentSession, deleteSession, bulkDeleteSessions } from '../store/sessionsSlice';
 import { fetchAttendance, fetchMemberHistory, submitAttendance, deleteAttendance, bulkDeleteAttendance } from '../store/attendanceSlice';
 import Modal from '../components/Modal';
+import AddSessionModal from '../components/AddSessionModal';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import axios from 'axios';
@@ -32,7 +33,6 @@ function Dashboard() {
     const [isSessionModalOpen, setSessionModalOpen] = useState(false);
 
     const [newMember, setNewMember] = useState({ first_name: '', last_name: '', email: '', nfc_id: '', roles: [], permissions: ['member'] });
-    const [newSession, setNewSession] = useState({ title: '', type: 'rehearsal', status: 'scheduled', start_time: new Date() });
     
     const [availableTypes, setAvailableTypes] = useState(['rehearsal', 'program']);
     const [availableStatuses, setAvailableStatuses] = useState(['scheduled', 'active', 'concluded', 'archived']);
@@ -238,21 +238,7 @@ function Dashboard() {
         setNewMember({ first_name: '', last_name: '', email: '', nfc_id: '' });
     };
 
-    const handleAddSession = () => {
-        if (!newSession.start_time) {
-            toast.error("Please specify a start time.");
-            return;
-        }
-        // Convert Date object to ISO string for the backend
-        const sessionData = {
-            ...newSession,
-            title: newSession.title.trim(),
-            start_time: newSession.start_time.toISOString()
-        };
-        dispatch(addSession(sessionData));
-        setSessionModalOpen(false);
-        setNewSession({ title: '', type: 'rehearsal', status: 'scheduled', start_time: new Date() });
-    };
+
 
     const handleMarkAttendance = async (memberId) => {
         if (!currentSession) return;
@@ -767,38 +753,12 @@ function Dashboard() {
                 <input placeholder="NFC ID (Optional)" value={newMember.nfc_id} onChange={e => setNewMember({ ...newMember, nfc_id: e.target.value })} />
             </Modal>
 
-            <Modal title="New Session" isOpen={isSessionModalOpen} onClose={() => setSessionModalOpen(false)} onSubmit={handleAddSession}>
-                <div className="grid grid-2" style={{ gap: '1rem' }}>
-                    <div>
-                        <label className="label">Session Title</label>
-                        <input autoFocus placeholder="e.g. Sunday Service" value={newSession.title} onChange={e => setNewSession({ ...newSession, title: e.target.value })} />
-                    </div>
-                    <div>
-                        <label className="label">Start Time</label>
-                        <DatePicker
-                            selected={newSession.start_time}
-                            onChange={(date) => setNewSession({ ...newSession, start_time: date })}
-                            showTimeSelect
-                            dateFormat="Pp"
-                            className="date-picker-input"
-                        />
-                    </div>
-                </div>
-                <div className="grid grid-2" style={{ gap: '1rem', marginTop: '1rem' }}>
-                    <div>
-                        <label className="label">Session Type</label>
-                        <select value={newSession.type} onChange={e => setNewSession({ ...newSession, type: e.target.value })}>
-                            {availableTypes.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="label">Initial Status</label>
-                        <select value={newSession.status} onChange={e => setNewSession({ ...newSession, status: e.target.value })}>
-                            {availableStatuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-                        </select>
-                    </div>
-                </div>
-            </Modal>
+            <AddSessionModal
+                isOpen={isSessionModalOpen}
+                onClose={() => setSessionModalOpen(false)}
+                availableTypes={availableTypes}
+                availableStatuses={availableStatuses}
+            />
 
             {/* Password Confirmation Modal for Delete */}
             {deleteTarget && (

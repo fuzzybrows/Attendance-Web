@@ -708,52 +708,95 @@ const Calendar = () => {
                                             <>
                                                 <div style={{ display: 'grid', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                     {choirRoles.map(role => {
-                                                        const assignment = selectedEvent.assignments.find(a => a.role === role);
-                                                        const currentMemberId = assignment?.member_id || '';
+                                                        const roleAssigns = selectedEvent.assignments.filter(a => a.role === role);
+                                                        if (roleAssigns.length === 0) roleAssigns.push(null); // ensure at least one empty slot
                                                         const sessionAvailability = availability?.sessions?.find(as => as.id === selectedEvent.id);
-                                                        const isMemberUnavailable = currentMemberId && sessionAvailability?.availability?.find(av => av.id === currentMemberId)?.optedOut;
 
                                                         return (
                                                             <div key={role} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                                                                 <label style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 800 }}>{role.replace('_', ' ')}</label>
-                                                                <select
-                                                                    value={currentMemberId}
-                                                                    onChange={(e) => {
-                                                                        const val = e.target.value;
-                                                                        const newAssignments = selectedEvent.assignments.filter(a => a.role !== role);
-                                                                        if (val) {
-                                                                            const memberObj = members.find(m => m.id === Number(val));
-                                                                            newAssignments.push({
-                                                                                role,
-                                                                                member_id: Number(val),
-                                                                                member_name: `${memberObj.first_name} ${memberObj.last_name}`,
-                                                                                member: memberObj
-                                                                            });
-                                                                        }
-                                                                        setSelectedEvent({ ...selectedEvent, assignments: newAssignments });
-                                                                    }}
-                                                                    style={{ 
-                                                                        background: isMemberUnavailable ? 'rgba(239, 68, 68, 0.15)' : 'rgba(30, 41, 59, 0.5)', 
-                                                                        border: `1px solid ${isMemberUnavailable ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255,255,255,0.1)'}`,
-                                                                        color: isMemberUnavailable ? '#fca5a5' : '#e2e8f0',
-                                                                        padding: '0.5rem', borderRadius: '8px', fontSize: '0.85rem'
-                                                                    }}
-                                                                >
-                                                                    <option value="">Unassigned</option>
-                                                                    {members.map(m => {
-                                                                        const isUnavailable = sessionAvailability?.availability?.find(av => av.id === m.id)?.optedOut;
-                                                                        const isNotSundayLead = role === 'lead_singer' && selectedEvent.start.getDay() === 0 && !m.roles?.includes('Sunday Lead Singer');
-                                                                        let labelExt = '';
-                                                                        if (isNotSundayLead) labelExt = ' (Not Sunday Lead)';
-                                                                        else if (isUnavailable) labelExt = ' (Unavailable)';
+                                                                {roleAssigns.map((assignment, idx) => {
+                                                                    const currentMemberId = assignment?.member_id || '';
+                                                                    const isMemberUnavailable = currentMemberId && sessionAvailability?.availability?.find(av => av.id === currentMemberId)?.optedOut;
+                                                                    return (
+                                                                        <div key={`${role}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                                            <select
+                                                                                value={currentMemberId}
+                                                                                onChange={(e) => {
+                                                                                    const val = e.target.value;
+                                                                                    // Remove this specific slot
+                                                                                    let newAssignments = [...selectedEvent.assignments];
+                                                                                    if (assignment) {
+                                                                                        const removeIdx = newAssignments.findIndex(a => a.role === role && a.member_id === assignment.member_id);
+                                                                                        if (removeIdx !== -1) newAssignments.splice(removeIdx, 1);
+                                                                                    }
+                                                                                    // Add new selection
+                                                                                    if (val) {
+                                                                                        const memberObj = members.find(m => m.id === Number(val));
+                                                                                        newAssignments.push({
+                                                                                            role,
+                                                                                            member_id: Number(val),
+                                                                                            member_name: `${memberObj.first_name} ${memberObj.last_name}`,
+                                                                                            member: memberObj
+                                                                                        });
+                                                                                    }
+                                                                                    setSelectedEvent({ ...selectedEvent, assignments: newAssignments });
+                                                                                }}
+                                                                                style={{ 
+                                                                                    flex: 1,
+                                                                                    background: isMemberUnavailable ? 'rgba(239, 68, 68, 0.15)' : 'rgba(30, 41, 59, 0.5)', 
+                                                                                    border: `1px solid ${isMemberUnavailable ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                                                                    color: isMemberUnavailable ? '#fca5a5' : '#e2e8f0',
+                                                                                    padding: '0.5rem', borderRadius: '8px', fontSize: '0.85rem', margin: 0
+                                                                                }}
+                                                                            >
+                                                                                <option value="">Unassigned</option>
+                                                                                {members.map(m => {
+                                                                                    const isUnavailable = sessionAvailability?.availability?.find(av => av.id === m.id)?.optedOut;
+                                                                                    const isNotSundayLead = role === 'lead_singer' && selectedEvent.start.getDay() === 0 && !m.roles?.includes('Sunday Lead Singer');
+                                                                                    let labelExt = '';
+                                                                                    if (isNotSundayLead) labelExt = ' (Not Sunday Lead)';
+                                                                                    else if (isUnavailable) labelExt = ' (Unavailable)';
 
-                                                                        return (
-                                                                            <option key={m.id} value={m.id} disabled={isNotSundayLead} style={{ background: '#0f172a', color: isNotSundayLead ? '#64748b' : 'white' }}>
-                                                                                {m.first_name} {m.last_name}{labelExt}
-                                                                            </option>
-                                                                        );
-                                                                    })}
-                                                                </select>
+                                                                                    return (
+                                                                                        <option key={m.id} value={m.id} disabled={isNotSundayLead} style={{ background: '#0f172a', color: isNotSundayLead ? '#64748b' : 'white' }}>
+                                                                                            {m.first_name} {m.last_name}{labelExt}
+                                                                                        </option>
+                                                                                    );
+                                                                                })}
+                                                                            </select>
+                                                                            {roleAssigns.length > 1 && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        if (assignment) {
+                                                                                            const newAssignments = [...selectedEvent.assignments];
+                                                                                            const removeIdx = newAssignments.findIndex(a => a.role === role && a.member_id === assignment.member_id);
+                                                                                            if (removeIdx !== -1) newAssignments.splice(removeIdx, 1);
+                                                                                            setSelectedEvent({ ...selectedEvent, assignments: newAssignments });
+                                                                                        }
+                                                                                    }}
+                                                                                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.25rem', fontSize: '1rem', lineHeight: 1 }}
+                                                                                    title="Remove assignee"
+                                                                                >
+                                                                                    ×
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setSelectedEvent({
+                                                                            ...selectedEvent,
+                                                                            assignments: [...selectedEvent.assignments, { role, member_id: '', member_name: '' }]
+                                                                        });
+                                                                    }}
+                                                                    style={{ background: 'transparent', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600, padding: '0.2rem 0', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '0.25rem', width: 'fit-content' }}
+                                                                >
+                                                                    <span style={{ fontSize: '0.8rem' }}>+</span> Add {role.replace('_', ' ')}
+                                                                </button>
                                                             </div>
                                                         );
                                                     })}
