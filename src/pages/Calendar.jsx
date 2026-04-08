@@ -48,6 +48,7 @@ const Calendar = () => {
     const isScheduleGenerate = isAdmin || currentUser?.permissions?.includes('schedule_generate');
     const isScheduleExport = isAdmin || currentUser?.permissions?.includes('schedule_export');
     const [assignableRoles, setAssignableRoles] = useState([]);
+    const [availableTypes, setAvailableTypes] = useState([]);
     const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
     const todayStr = new Date().toISOString().split('T')[0];
     const jsDayInit = new Date(todayStr + 'T00:00:00').getDay();
@@ -59,7 +60,7 @@ const Calendar = () => {
     const [deletingTemplateId, setDeletingTemplateId] = useState(null);
     const [newTemplate, setNewTemplate] = useState({
         title: 'Weekly Rehearsal',
-        type: 'rehearsal',
+        type: '',
         frequency: 'weekly',
         reference_start_date: todayStr,
         day_of_week: initDayOfWeek,
@@ -141,6 +142,15 @@ const Calendar = () => {
                     }
                 }).catch(err => console.error("Failed to fetch assignable roles", err));
 
+                // Fetch session types
+                axios.get(`${API_URL}/sessions/metadata`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }).then(res => {
+                    if (res.data.types?.length > 0) {
+                        setAvailableTypes(res.data.types);
+                    }
+                }).catch(err => console.error("Failed to fetch session types", err));
+
                 // Fetch session templates
                 axios.get(`${API_URL}/session-templates/`, {
                     headers: { Authorization: `Bearer ${token}` }
@@ -153,6 +163,13 @@ const Calendar = () => {
             dispatch(fetchExternalEvents({ year, month, token }));
         }
     }, [currentDate, token, dispatch, isAdmin]);
+
+    // Once session types load, seed the new template if still empty
+    useEffect(() => {
+        if (availableTypes.length > 0) {
+            setNewTemplate(prev => ({ ...prev, type: prev.type || availableTypes[0] }));
+        }
+    }, [availableTypes]);
 
     // Check for success/error query params from Google Auth Callback
     useEffect(() => {
@@ -1383,8 +1400,7 @@ const Calendar = () => {
                                             onChange={e => setNewTemplate({...newTemplate, type: e.target.value})}
                                             style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '0.6rem', borderRadius: '8px' }}
                                         >
-                                            <option value="rehearsal">Rehearsal</option>
-                                            <option value="program">Program</option>
+                                            {availableTypes.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -1461,7 +1477,7 @@ const Calendar = () => {
                                             const currentTodayStr = new Date().toISOString().split('T')[0];
                                             const currentJsDay = new Date(currentTodayStr + 'T00:00:00').getDay();
                                             const currentInitDayOfWeek = currentJsDay === 0 ? 6 : currentJsDay - 1;
-                                            setNewTemplate({ title: '', type: 'rehearsal', frequency: 'weekly', reference_start_date: currentTodayStr, day_of_week: currentInitDayOfWeek, start_time: '18:00:00', end_time: '20:00:00' });
+                                            setNewTemplate({ title: '', type: availableTypes[0] || '', frequency: 'weekly', reference_start_date: currentTodayStr, day_of_week: currentInitDayOfWeek, start_time: '18:00:00', end_time: '20:00:00' });
                                             toast.success("Template created!");
                                         } catch (e) { toast.error("Failed to add template"); }
                                     }}

@@ -6,23 +6,35 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { toast } from 'react-hot-toast';
 
-const AddSessionModal = ({ isOpen, onClose, availableTypes = ['rehearsal', 'program'], availableStatuses = ['scheduled', 'active', 'concluded', 'archived'] }) => {
+const AddSessionModal = ({ isOpen, onClose, availableTypes = [], availableStatuses = [] }) => {
     const dispatch = useDispatch();
     const tzName = useMemo(() => new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || 'CDT', []);
 
+    const defaultType = availableTypes[0] || '';
+    const defaultStatus = availableStatuses[0] || '';
+
     const [formData, setFormData] = useState({
         title: '',
-        type: 'rehearsal',
-        status: 'scheduled',
+        type: defaultType,
+        status: defaultStatus,
         start_time: new Date(),
         end_time: new Date(Date.now() + 2 * 60 * 60 * 1000)
     });
 
+    // Sync defaults when availableTypes/availableStatuses load from backend
+    React.useEffect(() => {
+        setFormData(prev => ({
+            ...prev,
+            type: prev.type || availableTypes[0] || '',
+            status: prev.status || availableStatuses[0] || ''
+        }));
+    }, [availableTypes, availableStatuses]);
+
     const resetAndClose = () => {
         setFormData({
             title: '',
-            type: 'rehearsal',
-            status: 'scheduled',
+            type: availableTypes[0] || '',
+            status: availableStatuses[0] || '',
             start_time: new Date(),
             end_time: new Date(Date.now() + 2 * 60 * 60 * 1000)
         });
