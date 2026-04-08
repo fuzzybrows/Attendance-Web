@@ -47,7 +47,7 @@ const Calendar = () => {
     const isTemplatesManage = isAdmin || currentUser?.permissions?.includes('templates_manage');
     const isScheduleGenerate = isAdmin || currentUser?.permissions?.includes('schedule_generate');
     const isScheduleExport = isAdmin || currentUser?.permissions?.includes('schedule_export');
-    const [assignableRoles, setAssignableRoles] = useState(['lead_singer', 'soprano', 'alto', 'tenor']);
+    const [assignableRoles, setAssignableRoles] = useState([]);
     const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
     const todayStr = new Date().toISOString().split('T')[0];
     const jsDayInit = new Date(todayStr + 'T00:00:00').getDay();

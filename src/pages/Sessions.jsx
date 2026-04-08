@@ -38,6 +38,7 @@ function Sessions() {
     const [selected, setSelected] = useState(new Set());
     const [availableTypes, setAvailableTypes] = useState(['rehearsal', 'program']);
     const [availableStatuses, setAvailableStatuses] = useState(['scheduled', 'active', 'concluded', 'archived']);
+    const [assignableRoles, setAssignableRoles] = useState([]);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -91,6 +92,15 @@ function Sessions() {
             }
         };
         fetchMetadata();
+
+        // Fetch assignable roles
+        axios.get('/members/metadata')
+            .then(res => {
+                if (res.data.assignable_roles?.length > 0) {
+                    setAssignableRoles(res.data.assignable_roles);
+                }
+            })
+            .catch(err => console.error('Failed to fetch assignable roles', err));
     }, [dispatch]);
 
     // Redirect non-admin/manager/authorized readers
@@ -588,7 +598,7 @@ function Sessions() {
                                     )
                                 ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                        {['lead_singer', 'soprano', 'alto', 'tenor'].map(role => {
+                                        {assignableRoles.map(role => {
                                             const roleAssigns = editedAssignments.filter(a => a.role === role);
                                             if (roleAssigns.length === 0) roleAssigns.push(null); // ensure at least one empty slot
                                             return (
