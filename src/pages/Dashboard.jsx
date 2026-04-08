@@ -34,7 +34,7 @@ function Dashboard() {
 
     const [newMember, setNewMember] = useState({ first_name: '', last_name: '', email: '', nfc_id: '', roles: [], permissions: ['member'] });
     
-    const [availableTypes, setAvailableTypes] = useState(['rehearsal', 'program']);
+    const [availableTypes, setAvailableTypes] = useState([]);
     const [availableStatuses, setAvailableStatuses] = useState(['scheduled', 'active', 'concluded', 'archived']);
 
     // Delete confirmation state

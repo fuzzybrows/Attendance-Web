@@ -36,7 +36,7 @@ function Sessions() {
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
     const [selected, setSelected] = useState(new Set());
-    const [availableTypes, setAvailableTypes] = useState(['rehearsal', 'program']);
+    const [availableTypes, setAvailableTypes] = useState([]);
     const [availableStatuses, setAvailableStatuses] = useState(['scheduled', 'active', 'concluded', 'archived']);
     const [assignableRoles, setAssignableRoles] = useState([]);
 
