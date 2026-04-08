@@ -25,7 +25,7 @@ vi.mock('axios', () => ({
     default: {
         get: vi.fn((url) => {
             if (url.includes('/members/metadata')) {
-                return Promise.resolve({ data: { choir_roles: ['lead_singer', 'soprano', 'alto', 'tenor', 'Sunday Lead Singer'] } });
+                return Promise.resolve({ data: { assignable_roles: ['lead_singer', 'soprano', 'alto', 'tenor', 'Sunday Lead Singer'] } });
             }
             if (url.includes('/members/')) {
                 return Promise.resolve({ data: mockMembers });

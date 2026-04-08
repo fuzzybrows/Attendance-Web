@@ -47,7 +47,7 @@ const Calendar = () => {
     const isTemplatesManage = isAdmin || currentUser?.permissions?.includes('templates_manage');
     const isScheduleGenerate = isAdmin || currentUser?.permissions?.includes('schedule_generate');
     const isScheduleExport = isAdmin || currentUser?.permissions?.includes('schedule_export');
-    const [choirRoles, setChoirRoles] = useState(['lead_singer', 'soprano', 'alto', 'tenor']);
+    const [assignableRoles, setAssignableRoles] = useState(['lead_singer', 'soprano', 'alto', 'tenor']);
     const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
     const todayStr = new Date().toISOString().split('T')[0];
     const jsDayInit = new Date(todayStr + 'T00:00:00').getDay();
@@ -132,14 +132,14 @@ const Calendar = () => {
                 dispatch(fetchMonthAvailability({ year, month, token }));
                 dispatch(fetchMembers());
                 
-                // Fetch choir roles for dynamic UI
+                // Fetch assignable roles for dynamic UI
                 axios.get(`${API_URL}/members/metadata`, {
                     headers: { Authorization: `Bearer ${token}` }
                 }).then(res => {
-                    if (res.data.choir_roles?.length > 0) {
-                        setChoirRoles(res.data.choir_roles);
+                    if (res.data.assignable_roles?.length > 0) {
+                        setAssignableRoles(res.data.assignable_roles);
                     }
-                }).catch(err => console.error("Failed to fetch choir roles", err));
+                }).catch(err => console.error("Failed to fetch assignable roles", err));
 
                 // Fetch session templates
                 axios.get(`${API_URL}/session-templates/`, {
@@ -706,7 +706,7 @@ const Calendar = () => {
                                         {isEditingAssignments ? (
                                             <>
                                                 <div style={{ display: 'grid', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                    {choirRoles.map(role => {
+                                                    {assignableRoles.map(role => {
                                                         const roleAssigns = selectedEvent.assignments.filter(a => a.role === role);
                                                         if (roleAssigns.length === 0) roleAssigns.push(null); // ensure at least one empty slot
                                                         const sessionAvailability = availability?.sessions?.find(as => as.id === selectedEvent.id);
@@ -1050,7 +1050,7 @@ const Calendar = () => {
                                 </thead>
                                 <tbody>
                                     {schedule?.sessions?.map(session => {
-                                        const roles = choirRoles;
+                                        const roles = assignableRoles;
                                         return (
                                             <tr key={session.id} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
                                                 <td className="px-4 py-3">
@@ -1166,7 +1166,7 @@ const Calendar = () => {
                                                 <div className="text-slate-500 text-xs uppercase font-bold">{session.type}</div>
                                             </div>
                                             <div className="flex flex-col gap-4">
-                                                {choirRoles.map(role => {
+                                                {assignableRoles.map(role => {
                                                     const assignedMembers = session.assignments.filter(a => a.role === role);
                                                     const memberIds = assignedMembers.map(a => a.member_id);
                                                     if (memberIds.length === 0) memberIds.push('');

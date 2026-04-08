@@ -57,7 +57,7 @@ vi.mock('axios', () => ({
                 return Promise.resolve({ data: mockSchedule });
             }
             if (url.includes('/members/metadata')) {
-                return Promise.resolve({ data: { choir_roles: ['lead_singer', 'soprano', 'alto', 'tenor', 'Sunday Lead Singer'] } });
+                return Promise.resolve({ data: { assignable_roles: ['lead_singer', 'soprano', 'alto', 'tenor', 'Sunday Lead Singer'] } });
             }
             if (url.includes('/session-templates/')) {
                 return Promise.resolve({ data: [] });
