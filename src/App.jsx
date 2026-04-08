@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { logout } from './store/authSlice';
 import Navigation from './components/Navigation';
 import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
@@ -25,6 +26,70 @@ const ProtectedRoute = ({ children, requiredPermission }) => {
 
   return children;
 };
+
+/**
+ * Decodes a JWT payload without verifying the signature.
+ * Returns null if the token is malformed.
+ */
+function decodeJwtExpiry(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp ?? null; // Unix timestamp in seconds
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Proactive session expiry guard.
+ * - On mount: if the stored token is already expired → redirect immediately.
+ * - Otherwise: schedule a redirect ~30 s before the token actually expires
+ *   so the user is never mid-action when the session dies.
+ * - Also re-checks every 60 s as a safety net (e.g. tab left open overnight).
+ */
+function useSessionExpiry() {
+  const { token } = useSelector(state => state.auth);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!token) return;
+
+    const exp = decodeJwtExpiry(token);
+    if (exp === null) return;
+
+    const WARN_BEFORE_MS = 30_000; // redirect 30 s before true expiry
+
+    const doLogout = () => {
+      dispatch(logout());
+      navigate('/login', { replace: true });
+    };
+
+    const msUntilExpiry = exp * 1000 - Date.now();
+
+    // Already expired
+    if (msUntilExpiry <= 0) {
+      doLogout();
+      return;
+    }
+
+    // Schedule proactive redirect ~30 s before token expires
+    const preWarningMs = Math.max(0, msUntilExpiry - WARN_BEFORE_MS);
+    const timer = setTimeout(doLogout, preWarningMs);
+
+    // Also poll every 60 s as a safety net
+    const poll = setInterval(() => {
+      if (exp * 1000 - Date.now() <= 0) {
+        doLogout();
+      }
+    }, 60_000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(poll);
+    };
+  }, [token, dispatch, navigate]);
+}
 
 function NotFound() {
   return (
@@ -51,6 +116,7 @@ function NotFound() {
 }
 
 function AppRoutes() {
+  useSessionExpiry();
   return (
     <div className="container">
       <Navigation />

@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { Provider } from 'react-redux'
 import { store } from './store'
+import { logout } from './store/authSlice'
 import App from './App'
 import './index.css'
 
@@ -21,8 +22,9 @@ axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // Dispatch through Redux so state is cleanly cleared,
+      // then let the useSessionExpiry hook / ProtectedRoute handle the redirect.
+      store.dispatch(logout());
       window.location.href = '/login';
     }
     return Promise.reject(error);
