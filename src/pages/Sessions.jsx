@@ -46,6 +46,7 @@ function Sessions() {
 
     // Add Session Modal State
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [pastExpanded, setPastExpanded] = useState(false);
 
     // View/Edit Modal State
     const [viewSession, setViewSession] = useState(null);
@@ -126,18 +127,16 @@ function Sessions() {
     const filtered = sessions
         .filter(fuzzyMatch)
         .filter(s => statusFilter === 'all' || (s.status || 'active') === statusFilter)
-        .filter(s => typeFilter === 'all' || s.type === typeFilter);
+        .filter(s => typeFilter === 'all' || s.type === typeFilter)
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
 
-    const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
+    // Split into current (active + scheduled) and past (concluded + archived)
+    const currentSessions = filtered.filter(s => ['active', 'scheduled'].includes(s.status || 'active'));
+    const pastSessions = filtered.filter(s => ['concluded', 'archived'].includes(s.status));
+
+    const totalPages = Math.ceil(currentSessions.length / ITEMS_PER_PAGE) || 1;
     const validCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
-    const paginatedFiltered = filtered.slice((validCurrentPage - 1) * ITEMS_PER_PAGE, validCurrentPage * ITEMS_PER_PAGE);
-
-    const grouped = {
-        scheduled: paginatedFiltered.filter(s => s.status === 'scheduled'),
-        active: paginatedFiltered.filter(s => (s.status || 'active') === 'active'),
-        concluded: paginatedFiltered.filter(s => s.status === 'concluded'),
-        archived: paginatedFiltered.filter(s => s.status === 'archived'),
-    };
+    const paginatedFiltered = currentSessions.slice((validCurrentPage - 1) * ITEMS_PER_PAGE, validCurrentPage * ITEMS_PER_PAGE);
 
     const handleSelectAll = (e) => {
         const nextSelected = new Set(selected);
@@ -250,90 +249,6 @@ function Sessions() {
     };
 
 
-
-    const renderGroup = (title, items, statusKey) => {
-        if (items.length === 0) return null;
-        const sc = statusColors[statusKey];
-        return (
-            <div key={statusKey} style={{ marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                    <h3 style={{ margin: 0 }}>{title}</h3>
-                    <span style={{
-                        background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color,
-                        padding: '0.15rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 600
-                    }}>
-                        {items.length}
-                    </span>
-                </div>
-                {items.map(s => (
-                    <div key={s.id} className={`glass-card session-card ${selected.has(s.id) ? 'selected' : ''}`} style={{
-                        border: selected.has(s.id) ? undefined : `1px solid ${sc.border}`,
-                        transition: 'all 0.2s ease'
-                    }}
-                        onClick={() => handleViewSession(s)}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                            <input
-                                type="checkbox"
-                                checked={selected.has(s.id)}
-                                onChange={(e) => {
-                                    e.stopPropagation();
-                                    const next = new Set(selected);
-                                    if (e.target.checked) next.add(s.id);
-                                    else next.delete(s.id);
-                                    setSelected(next);
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{ accentColor: '#818cf8', margin: 0, width: '20px', height: '20px', flexShrink: 0 }}
-                            />
-                            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                <strong style={{ lineHeight: '1.4', fontSize: '1rem' }}>{s.title}</strong>
-                                <small style={{ color: 'var(--text-secondary)', lineHeight: '1.4', marginTop: '0.1rem', fontSize: '0.8rem' }}>{new Date(s.start_time).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</small>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span className="status-badge" style={{ 
-                                background: s.type === 'rehearsal' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                                color: s.type === 'rehearsal' ? '#818cf8' : '#10b981',
-                                border: `1px solid ${s.type === 'rehearsal' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
-                                textTransform: 'capitalize'
-                            }}>
-                                {s.type}
-                            </span>
-                            <select
-                                value={s.status || 'active'}
-                                onChange={(e) => { e.stopPropagation(); handleStatusChange(s.id, e.target.value); }}
-                                onClick={(e) => e.stopPropagation()}
-                                style={{
-                                    background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color,
-                                    borderRadius: '8px', padding: '0 0.5rem', fontSize: '0.8125rem', cursor: 'pointer', outline: 'none',
-                                    height: '32px', margin: 0, width: 'auto', fontWeight: 600
-                                }}
-                            >
-                                <option value="scheduled">Scheduled</option>
-                                <option value="active">Active</option>
-                                <option value="concluded">Concluded</option>
-                                <option value="archived">Archived</option>
-                            </select>
-                            {isSessionsDelete && (
-                                <button
-                                    className="btn"
-                                    style={{ 
-                                        background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#f87171', 
-                                        padding: '0', fontSize: '0.9rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        borderRadius: '8px'
-                                    }}
-                                    onClick={(e) => { e.stopPropagation(); requestDelete(s.id, s.title); }}
-                                >
-                                    🗑️
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        );
-    };
 
     return (
         <>
@@ -478,10 +393,181 @@ function Sessions() {
                     </p>
                 ) : (
                     <>
-                        {renderGroup('🔵 Scheduled', grouped.scheduled, 'scheduled')}
-                        {renderGroup('🟢 Active', grouped.active, 'active')}
-                        {renderGroup('🟡 Concluded', grouped.concluded, 'concluded')}
-                        {renderGroup('⚪ Archived', grouped.archived, 'archived')}
+                    {/* Active / Scheduled sessions */}
+                    {currentSessions.length > 0 ? paginatedFiltered.map(s => {
+                            const sc = statusColors[s.status || 'active'] || statusColors.active;
+                            return (
+                                <div key={s.id} className={`glass-card session-card ${selected.has(s.id) ? 'selected' : ''}`} style={{
+                                    border: selected.has(s.id) ? undefined : `1px solid ${sc.border}`,
+                                    transition: 'all 0.2s ease',
+                                    marginBottom: '0.75rem'
+                                }}
+                                    onClick={() => handleViewSession(s)}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={selected.has(s.id)}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                const next = new Set(selected);
+                                                if (e.target.checked) next.add(s.id);
+                                                else next.delete(s.id);
+                                                setSelected(next);
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{ accentColor: '#818cf8', margin: 0, width: '20px', height: '20px', flexShrink: 0 }}
+                                        />
+                                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                            <strong style={{ lineHeight: '1.4', fontSize: '1rem' }}>{s.title}</strong>
+                                            <small style={{ color: 'var(--text-secondary)', lineHeight: '1.4', marginTop: '0.1rem', fontSize: '0.8rem' }}>{new Date(s.start_time).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</small>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <span className="status-badge" style={{ 
+                                            background: s.type === 'rehearsal' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                            color: s.type === 'rehearsal' ? '#818cf8' : '#10b981',
+                                            border: `1px solid ${s.type === 'rehearsal' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                                            textTransform: 'capitalize'
+                                        }}>
+                                            {s.type}
+                                        </span>
+                                        <select
+                                            value={s.status || 'active'}
+                                            onChange={(e) => { e.stopPropagation(); handleStatusChange(s.id, e.target.value); }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{
+                                                background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color,
+                                                borderRadius: '8px', padding: '0 0.5rem', fontSize: '0.8125rem', cursor: 'pointer', outline: 'none',
+                                                height: '32px', margin: 0, width: 'auto', fontWeight: 600
+                                            }}
+                                        >
+                                            <option value="scheduled">Scheduled</option>
+                                            <option value="active">Active</option>
+                                            <option value="concluded">Concluded</option>
+                                            <option value="archived">Archived</option>
+                                        </select>
+                                        {isSessionsDelete && (
+                                            <button
+                                                className="btn"
+                                                style={{ 
+                                                    background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#f87171', 
+                                                    padding: '0', fontSize: '0.9rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    borderRadius: '8px'
+                                                }}
+                                                onClick={(e) => { e.stopPropagation(); requestDelete(s.id, s.title); }}
+                                            >
+                                                🗑️
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        }) : (
+                            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '1rem 0' }}>
+                                No active or scheduled sessions.
+                            </p>
+                        )}
+
+                        {/* Concluded / Archived — collapsible */}
+                        {pastSessions.length > 0 && (
+                            <div style={{ marginTop: '1.5rem' }}>
+                                <button
+                                    onClick={() => setPastExpanded(prev => !prev)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.6rem', width: '100%',
+                                        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '10px', padding: '0.65rem 1rem', cursor: 'pointer',
+                                        color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600,
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <span style={{ display: 'inline-flex', transition: 'transform 0.2s', transform: pastExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>▶</span>
+                                    Past Sessions
+                                    <span style={{
+                                        background: 'rgba(148, 163, 184, 0.15)', border: '1px solid rgba(148, 163, 184, 0.3)',
+                                        color: '#94a3b8', padding: '0.1rem 0.55rem', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 600
+                                    }}>
+                                        {pastSessions.length}
+                                    </span>
+                                </button>
+                                {pastExpanded && (
+                                    <div style={{ marginTop: '0.75rem' }}>
+                                        {pastSessions.map(s => {
+                                            const sc = statusColors[s.status || 'active'] || statusColors.active;
+                                            return (
+                                                <div key={s.id} className={`glass-card session-card ${selected.has(s.id) ? 'selected' : ''}`} style={{
+                                                    border: selected.has(s.id) ? undefined : `1px solid ${sc.border}`,
+                                                    transition: 'all 0.2s ease',
+                                                    marginBottom: '0.75rem',
+                                                    opacity: 0.75
+                                                }}
+                                                    onClick={() => handleViewSession(s)}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selected.has(s.id)}
+                                                            onChange={(e) => {
+                                                                e.stopPropagation();
+                                                                const next = new Set(selected);
+                                                                if (e.target.checked) next.add(s.id);
+                                                                else next.delete(s.id);
+                                                                setSelected(next);
+                                                            }}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            style={{ accentColor: '#818cf8', margin: 0, width: '20px', height: '20px', flexShrink: 0 }}
+                                                        />
+                                                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                            <strong style={{ lineHeight: '1.4', fontSize: '1rem' }}>{s.title}</strong>
+                                                            <small style={{ color: 'var(--text-secondary)', lineHeight: '1.4', marginTop: '0.1rem', fontSize: '0.8rem' }}>{new Date(s.start_time).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</small>
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                        <span className="status-badge" style={{ 
+                                                            background: s.type === 'rehearsal' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                                            color: s.type === 'rehearsal' ? '#818cf8' : '#10b981',
+                                                            border: `1px solid ${s.type === 'rehearsal' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                                                            textTransform: 'capitalize'
+                                                        }}>
+                                                            {s.type}
+                                                        </span>
+                                                        <select
+                                                            value={s.status || 'active'}
+                                                            onChange={(e) => { e.stopPropagation(); handleStatusChange(s.id, e.target.value); }}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            style={{
+                                                                background: sc.bg, border: `1px solid ${sc.border}`, color: sc.color,
+                                                                borderRadius: '8px', padding: '0 0.5rem', fontSize: '0.8125rem', cursor: 'pointer', outline: 'none',
+                                                                height: '32px', margin: 0, width: 'auto', fontWeight: 600
+                                                            }}
+                                                        >
+                                                            <option value="scheduled">Scheduled</option>
+                                                            <option value="active">Active</option>
+                                                            <option value="concluded">Concluded</option>
+                                                            <option value="archived">Archived</option>
+                                                        </select>
+                                                        {isSessionsDelete && (
+                                                            <button
+                                                                className="btn"
+                                                                style={{ 
+                                                                    background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#f87171', 
+                                                                    padding: '0', fontSize: '0.9rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    borderRadius: '8px'
+                                                                }}
+                                                                onClick={(e) => { e.stopPropagation(); requestDelete(s.id, s.title); }}
+                                                            >
+                                                                🗑️
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Pagination Controls */}
                         {totalPages > 1 && (

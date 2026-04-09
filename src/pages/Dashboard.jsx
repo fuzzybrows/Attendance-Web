@@ -198,7 +198,7 @@ function Dashboard() {
                 clearInterval(countdownRef.current);
             };
         }
-    }, [qrActive, currentSession, isAdmin, fetchQrToken]);
+    }, [qrActive, currentSession, isAdmin, fetchQrToken, canWriteAttendance]);
 
     useEffect(() => {
         if (canReadSessions || canReadAttendance || canCreateMembers) {
@@ -218,7 +218,7 @@ function Dashboard() {
         } else if (user) {
             dispatch(fetchMemberHistory(user.id));
         }
-    }, [dispatch, isAdmin, user]);
+    }, [dispatch, isAdmin, user, canReadSessions, canReadAttendance, canCreateMembers]);
 
     useEffect(() => {
         if (currentSession && canReadAttendance) {

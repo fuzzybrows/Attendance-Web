@@ -58,7 +58,7 @@ const Calendar = () => {
 
     const [templates, setTemplates] = useState([]);
     const [deletingTemplateId, setDeletingTemplateId] = useState(null);
-    const [newTemplate, setNewTemplate] = useState({
+    const [newTemplate, setNewTemplate] = useState(() => ({
         title: 'Weekly Rehearsal',
         type: '',
         frequency: 'weekly',
@@ -66,7 +66,7 @@ const Calendar = () => {
         day_of_week: initDayOfWeek,
         start_time: '18:00:00',
         end_time: '20:00:00'
-    });
+    }));
 
     const [confirmState, setConfirmState] = useState({ 
         isOpen: false, 
@@ -162,14 +162,17 @@ const Calendar = () => {
             dispatch(fetchUnavailableDays({ year, month, token }));
             dispatch(fetchExternalEvents({ year, month, token }));
         }
-    }, [currentDate, token, dispatch, isAdmin]);
+    }, [currentDate, token, dispatch, isAdmin, isAssignmentsEdit, isScheduleGenerate, isScheduleRead, isTemplatesManage]);
 
-    // Once session types load, seed the new template if still empty
+    // Once session types load, seed the new template type if still empty
+    const availableTypesRef = React.useRef(availableTypes);
+    availableTypesRef.current = availableTypes;
     useEffect(() => {
-        if (availableTypes.length > 0) {
-            setNewTemplate(prev => ({ ...prev, type: prev.type || availableTypes[0] }));
+        if (availableTypesRef.current.length > 0 && !newTemplate.type) {
+            setNewTemplate(prev => ({ ...prev, type: availableTypesRef.current[0] }));
         }
-    }, [availableTypes]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [availableTypes.length]);
 
     // Check for success/error query params from Google Auth Callback
     useEffect(() => {
@@ -1479,7 +1482,7 @@ const Calendar = () => {
                                             const currentInitDayOfWeek = currentJsDay === 0 ? 6 : currentJsDay - 1;
                                             setNewTemplate({ title: '', type: availableTypes[0] || '', frequency: 'weekly', reference_start_date: currentTodayStr, day_of_week: currentInitDayOfWeek, start_time: '18:00:00', end_time: '20:00:00' });
                                             toast.success("Template created!");
-                                        } catch (e) { toast.error("Failed to add template"); }
+                                        } catch { toast.error("Failed to add template"); }
                                     }}
                                     style={{ background: '#6366f1', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}
                                 >

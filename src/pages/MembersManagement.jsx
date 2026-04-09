@@ -30,7 +30,7 @@ const generateSecurePassword = (length = 16) => {
 function MembersManagement() {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { items: members, loading } = useSelector(state => state.members);
+    const { items: members } = useSelector(state => state.members);
     const { user } = useSelector(state => state.auth);
 
     const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
