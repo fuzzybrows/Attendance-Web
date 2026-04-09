@@ -15,7 +15,7 @@ vi.mock('react-big-calendar', () => ({
         <div data-testid="mock-calendar">
             <button 
                 data-testid="trigger-single-tap" 
-                onClick={() => onSelectSlot({ slots: [new Date('2026-04-10')], action: 'select' })}
+                onClick={() => onSelectSlot({ slots: [new Date('2026-04-10')], action: 'click' })}
             >
                 Single Tap
             </button>
