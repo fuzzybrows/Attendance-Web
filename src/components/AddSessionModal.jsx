@@ -13,13 +13,13 @@ const AddSessionModal = ({ isOpen, onClose, availableTypes = [], availableStatus
     const defaultType = availableTypes[0] || '';
     const defaultStatus = availableStatuses[0] || '';
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState(() => ({
         title: '',
         type: defaultType,
         status: defaultStatus,
         start_time: new Date(),
         end_time: new Date(Date.now() + 2 * 60 * 60 * 1000)
-    });
+    }));
 
     // Sync defaults when availableTypes/availableStatuses load from backend
     React.useEffect(() => {

@@ -68,7 +68,7 @@ const setupStore = () => {
 };
 
 describe('Calendar Mobile Touch Interaction Tests', () => {
-    const originalMaxTouchPoints = navigator.maxTouchPoints;
+    const _originalMaxTouchPoints = navigator.maxTouchPoints;
 
     beforeEach(() => {
         vi.clearAllMocks();

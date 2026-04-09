@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchStats, fetchMemberStats } from '../store/statsSlice';
@@ -14,8 +14,6 @@ const Statistics = () => {
 
     const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
     const canReadAttendance = isAdmin || user?.permissions?.includes('attendance_read');
-
-    const [selectedMember, setSelectedMember] = useState(null);
 
     useEffect(() => {
         if (canReadAttendance) {
@@ -33,7 +31,6 @@ const Statistics = () => {
     if (!canReadAttendance) return null;
 
     const handleMemberLookup = (memberId) => {
-        setSelectedMember(memberId);
         dispatch(fetchMemberStats(memberId));
     };
 

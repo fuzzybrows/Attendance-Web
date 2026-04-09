@@ -7,28 +7,24 @@ import { getDeviceId } from '../utils/device';
 function QRAttendance() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { token: authToken, user } = useSelector(state => state.auth);
+    const { token: authToken } = useSelector(state => state.auth);
 
     const sessionId = searchParams.get('session_id');
     const qrToken = searchParams.get('token');
 
-    const [status, setStatus] = useState('processing'); // processing, success, error, login_required
-    const [message, setMessage] = useState('');
-    const [memberName, setMemberName] = useState('');
+    const hasValidParams = !!(sessionId && qrToken);
+
+    const [status, setStatus] = useState(hasValidParams ? 'processing' : 'error');
+    const [message, setMessage] = useState(hasValidParams ? '' : 'Invalid QR code link.');
 
     useEffect(() => {
-        if (!sessionId || !qrToken) {
-            setStatus('error');
-            setMessage('Invalid QR code link.');
-            return;
-        }
+        if (!hasValidParams) return;
 
         if (!authToken) {
             const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
             navigate(`/login?redirect=${returnUrl}`);
             return;
         }
-
 
         // Mark attendance
         const markAttendance = async () => {
@@ -67,7 +63,6 @@ function QRAttendance() {
                 );
                 setStatus('success');
                 setMessage(response.data.message);
-                setMemberName(response.data.member_name);
             } catch (err) {
                 setStatus('error');
                 if (err.response?.status === 409) {
@@ -84,7 +79,7 @@ function QRAttendance() {
         };
 
         markAttendance();
-    }, [sessionId, qrToken, authToken]);
+    }, [hasValidParams, sessionId, qrToken, authToken, navigate]);
 
     return (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
