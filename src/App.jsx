@@ -14,6 +14,7 @@ import Sessions from './pages/Sessions';
 import QRAttendance from './pages/QRAttendance';
 import Calendar from './pages/Calendar';
 import { Toaster } from 'react-hot-toast';
+import { Analytics } from '@vercel/analytics/react';
 
 const ProtectedRoute = ({ children, requiredPermission }) => {
   const { token, user } = useSelector(state => state.auth);
@@ -143,6 +144,7 @@ function App() {
     <ErrorBoundary>
       <Router>
         <Toaster position="top-right" />
+        <Analytics />
         <Routes>
           <Route path="/health" element={<>OK</>} />
           <Route path="/*" element={<AppRoutes />} />
