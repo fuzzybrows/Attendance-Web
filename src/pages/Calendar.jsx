@@ -18,6 +18,7 @@ import { fetchMembers } from '../store/membersSlice';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
+import CalendarTour from '../components/CalendarTour';
 
 const localizer = momentLocalizer(moment);
 
@@ -472,8 +473,11 @@ const Calendar = () => {
                     The schedule for {moment(currentDate).format('MMMM YYYY')} has been finalized. Availability is now locked.
                 </div>
             )}
+            <CalendarTour userId={currentUser?.id} isAdmin={isAdmin} googleConnected={googleConnected} />
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                <h1 className="font-bold text-white" style={{ fontSize: 'clamp(1.5rem, 5vw, 2.5rem)', margin: 0 }}>Schedule & Calendar</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <h1 id="calendar-page-title" className="font-bold text-white" style={{ fontSize: 'clamp(1.5rem, 5vw, 2.5rem)', margin: 0 }}>Schedule & Calendar</h1>
+                </div>
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     <button
                         onClick={() => {
@@ -482,6 +486,7 @@ const Calendar = () => {
                             setSelectedDays([]); // clear selection when toggling mode
                         }}
                         disabled={isMonthLocked}
+                        id="btn-multi-select"
                         style={{ flex: '1 1 auto', minWidth: '160px', textAlign: 'center' }}
                         className={`px-4 py-2 rounded-xl shadow-lg transition font-medium text-sm ${isMultiSelectMode ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'} ${isMonthLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
@@ -490,6 +495,7 @@ const Calendar = () => {
                     {!googleConnected && (
                         <button
                             onClick={handleConnectGoogle}
+                            id="btn-connect-google"
                             style={{ flex: '1 1 auto', minWidth: '160px', textAlign: 'center' }}
                             className="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-4 py-2 rounded-xl shadow-lg hover:bg-blue-600/30 transition font-medium text-sm flex items-center justify-center gap-2"
                         >
@@ -499,6 +505,7 @@ const Calendar = () => {
                     )}
                     <button
                         onClick={handleSyncICS}
+                        id="btn-export-ics"
                         style={{ flex: '1 1 auto', minWidth: '100px', textAlign: 'center' }}
                         className="bg-purple-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-purple-900/30 hover:bg-purple-700 transition font-medium text-sm"
                     >
@@ -573,7 +580,7 @@ const Calendar = () => {
                 </div>
             )}
 
-            <div className="glass-card calendar-container">
+            <div id="calendar-grid" className="glass-card calendar-container">
                 <BigCalendar
                     localizer={localizer}
                     events={events}
