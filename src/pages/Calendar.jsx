@@ -473,7 +473,7 @@ const Calendar = () => {
                     The schedule for {moment(currentDate).format('MMMM YYYY')} has been finalized. Availability is now locked.
                 </div>
             )}
-            <CalendarTour userId={currentUser?.id} isAdmin={isAdmin} googleConnected={googleConnected} />
+            <CalendarTour userId={currentUser?.id} isAdmin={isAdmin} googleConnected={googleConnected} permissions={{ isScheduleGenerate, isAssignmentsEdit, isTemplatesManage, isScheduleExport }} />
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <h1 id="calendar-page-title" className="font-bold text-white" style={{ fontSize: 'clamp(1.5rem, 5vw, 2.5rem)', margin: 0 }}>Schedule & Calendar</h1>
@@ -518,6 +518,7 @@ const Calendar = () => {
                                 setGenerateYear(currentDate.getFullYear());
                                 setIsGenerateModalOpen(true);
                             }}
+                            id="btn-auto-generate"
                             style={{ flex: '1 1 auto', minWidth: '120px', textAlign: 'center' }}
                             className="bg-blue-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-blue-900/40 hover:bg-blue-700 transition font-medium text-sm"
                         >
@@ -527,6 +528,7 @@ const Calendar = () => {
                     {isTemplatesManage && (
                         <button
                             onClick={() => setIsRecurringModalOpen(true)}
+                            id="btn-recurring"
                             style={{ flex: '1 1 auto', minWidth: '130px', textAlign: 'center' }}
                             className="bg-amber-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-amber-900/40 hover:bg-amber-700 transition font-medium text-sm flex items-center justify-center gap-2"
                         >
@@ -537,6 +539,7 @@ const Calendar = () => {
                     {(isAssignmentsEdit || isScheduleGenerate) && schedule?.sessions?.length > 0 && (
                         <button
                             onClick={handleSaveSchedule}
+                            id="btn-save-schedule"
                             style={{ flex: '1 1 auto', minWidth: '100px', textAlign: 'center' }}
                             className="bg-green-600 text-white px-4 py-2 rounded-xl shadow-lg shadow-emerald-900/40 hover:bg-green-700 transition font-medium text-sm"
                         >
@@ -547,6 +550,7 @@ const Calendar = () => {
                         <>
                             <button
                                 onClick={handleExportCSV}
+                                id="btn-export-csv"
                                 style={{ flex: '1 1 auto', minWidth: '100px', textAlign: 'center' }}
                                 className="bg-gray-800 text-white px-4 py-2 rounded-xl shadow-lg shadow-slate-900/40 hover:bg-gray-900 transition font-medium text-sm"
                             >

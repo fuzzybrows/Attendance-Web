@@ -2,14 +2,22 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './CalendarTour.css';
 
 /**
- * CalendarTour – guided onboarding overlay for non-admin users.
+ * CalendarTour – guided onboarding overlay for calendar users.
+ *
+ * Renders a **member tour** for regular users and a separate **admin tour**
+ * for users with elevated calendar permissions (schedule_generate,
+ * assignments_edit, templates_manage, schedule_export, or full admin).
  *
  * Props:
- *   userId        – current user id (used for localStorage key)
- *   isAdmin       – if true the component renders nothing
- *   googleConnected – whether Google Calendar is already connected
+ *   userId            – current user id (used for localStorage key)
+ *   isAdmin           – full admin flag
+ *   googleConnected   – whether Google Calendar is already connected
+ *   permissions       – object of boolean permission flags:
+ *     { isScheduleGenerate, isAssignmentsEdit, isTemplatesManage, isScheduleExport }
  */
-const TOUR_STEPS = [
+
+// ─── Member Tour Steps ──────────────────────────────────────────────────────
+const MEMBER_STEPS = [
     {
         target: '#calendar-page-title',
         icon: '👋',
@@ -22,7 +30,7 @@ const TOUR_STEPS = [
         icon: '📅',
         title: 'Your Schedule at a Glance',
         body: 'The calendar shows all scheduled sessions for the month. Sessions you\'re assigned to are highlighted in green. If you\'ve connected Google Calendar, your personal events will also appear here so you can easily spot conflicts.',
-        placement: 'top',
+        placement: 'center',
     },
     {
         target: '.rbc-toolbar',
@@ -51,20 +59,92 @@ const TOUR_STEPS = [
         title: 'Connect Google Calendar',
         body: 'Link your Google Calendar to see your personal events alongside the schedule. This makes it easy to spot conflicts so you can mark those days as unavailable.',
         placement: 'bottom',
-        // This step is conditionally shown only when Google is not connected
         conditional: 'google',
     },
 ];
 
+// ─── Admin Tour Steps ───────────────────────────────────────────────────────
+const ADMIN_STEPS = [
+    {
+        target: '#calendar-page-title',
+        icon: '🛡️',
+        title: 'Calendar Admin Overview',
+        body: 'As a calendar admin, you have extra tools to manage the schedule. This tour will walk you through the features available to you beyond the standard member view.',
+        placement: 'bottom',
+    },
+    {
+        target: '#calendar-grid',
+        icon: '📅',
+        title: 'The Schedule Grid',
+        body: 'The calendar displays all sessions for the month. Just like members, you can see your own assignments and availability here. The admin tools below help you manage the overall schedule.',
+        placement: 'center',
+    },
+    {
+        target: '#btn-multi-select',
+        icon: '✅',
+        title: 'Availability Management',
+        body: 'Select individual or multiple days to manage your own availability. Members also use this to indicate when they\'re unavailable.',
+        placement: 'bottom',
+    },
+    {
+        target: '#btn-auto-generate',
+        icon: '🤖',
+        title: 'Auto Generate Assignments',
+        body: 'Automatically generate role assignments for an entire month based on member availability and roles. You can review and tweak the draft before saving.',
+        placement: 'bottom',
+        conditional: 'scheduleGenerate',
+    },
+    {
+        target: '#btn-recurring',
+        icon: '🔄',
+        title: 'Recurring Sessions',
+        body: 'Set up recurring session templates (weekly rehearsals, services, etc.) and generate sessions for any month in one click. No more creating sessions one by one!',
+        placement: 'bottom',
+        conditional: 'templatesManage',
+    },
+    {
+        target: '#btn-save-schedule',
+        icon: '💾',
+        title: 'Save & Publish',
+        body: 'After generating or editing assignments, click "Save Schedule" to publish them. Once saved, members will see their assignments and availability locks in.',
+        placement: 'bottom',
+        conditional: 'saveSchedule',
+    },
+    {
+        target: '#btn-export-csv',
+        icon: '📊',
+        title: 'Export Reports',
+        body: 'Export the schedule as CSV or PDF for printing, sharing in group chats, or archiving. Great for distributing the monthly schedule to the team.',
+        placement: 'bottom',
+        conditional: 'scheduleExport',
+    },
+    {
+        target: '#btn-export-ics',
+        icon: '📤',
+        title: 'Calendar Sync',
+        body: 'Export an .ics file for syncing the schedule with external calendar apps. Members can also do this from their own view.',
+        placement: 'bottom',
+    },
+    {
+        target: '#btn-connect-google',
+        icon: '🔗',
+        title: 'Google Calendar Integration',
+        body: 'Link your Google Calendar to see your personal events alongside the schedule. This helps you spot your own conflicts when marking your own availability.',
+        placement: 'bottom',
+        conditional: 'google',
+    },
+];
+
+// ─── Storage Key Helpers ────────────────────────────────────────────────────
 const STORAGE_PREFIX = 'calendarTourCompleted_';
 const DISMISSED_PREFIX = 'calendarTourDismissed_';
 
-function getStorageKey(userId) {
-    return `${STORAGE_PREFIX}${userId}`;
+function getStorageKey(userId, variant) {
+    return `${STORAGE_PREFIX}${variant}_${userId}`;
 }
 
-function getDismissedKey(userId) {
-    return `${DISMISSED_PREFIX}${userId}`;
+function getDismissedKey(userId, variant) {
+    return `${DISMISSED_PREFIX}${variant}_${userId}`;
 }
 
 /**
@@ -76,27 +156,28 @@ function computePosition(targetRect, placement, tooltipWidth = 360) {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    // Clamp tooltip width for small screens
     const tw = Math.min(tooltipWidth, vw - pad * 2);
-
     let top, left;
+
+    if (placement === 'center') {
+        // Center the tooltip in the viewport, overlaid on the target
+        const estimatedHeight = 220;
+        top = Math.max(pad, (vh - estimatedHeight) / 2);
+        left = Math.max(pad, (vw - tw) / 2);
+        return { top, left, width: tw };
+    }
 
     if (placement === 'bottom') {
         top = targetRect.bottom + arrowGap;
         left = targetRect.left + targetRect.width / 2 - tw / 2;
     } else {
-        // top
         top = targetRect.top - arrowGap;
         left = targetRect.left + targetRect.width / 2 - tw / 2;
     }
 
-    // Clamp horizontal
     if (left < pad) left = pad;
     if (left + tw > vw - pad) left = vw - pad - tw;
 
-    // If tooltip below would overflow, flip to top (and vice versa). For 'top',
-    // we need to subtract the tooltip height, but we don't know it yet so use
-    // an estimate.
     const estimatedHeight = 220;
     if (placement === 'bottom' && top + estimatedHeight > vh - pad) {
         top = targetRect.top - arrowGap - estimatedHeight;
@@ -104,7 +185,6 @@ function computePosition(targetRect, placement, tooltipWidth = 360) {
     } else if (placement === 'top') {
         top = top - estimatedHeight;
         if (top < pad) {
-            // flip to bottom
             top = targetRect.bottom + arrowGap;
         }
     }
@@ -112,7 +192,19 @@ function computePosition(targetRect, placement, tooltipWidth = 360) {
     return { top, left, width: tw };
 }
 
-const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
+const CalendarTour = ({ userId, isAdmin, googleConnected, permissions = {} }) => {
+    const {
+        isScheduleGenerate = false,
+        isAssignmentsEdit = false,
+        isTemplatesManage = false,
+        isScheduleExport = false,
+    } = permissions;
+
+    // Determine which tour variant to show
+    const hasAdminPerms = isAdmin || isScheduleGenerate || isAssignmentsEdit || isTemplatesManage || isScheduleExport;
+    const tourVariant = hasAdminPerms ? 'admin' : 'member';
+    const baseSteps = hasAdminPerms ? ADMIN_STEPS : MEMBER_STEPS;
+
     const [isActive, setIsActive] = useState(false);
     const [showPrompt, setShowPrompt] = useState(false);
     const [currentStep, setCurrentStep] = useState(0);
@@ -121,23 +213,26 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
     const tooltipRef = useRef(null);
     const rafRef = useRef(null);
 
-    // Determine filtered steps (exclude conditional steps that don't apply)
-    const steps = TOUR_STEPS.filter(step => {
+    // Filter steps based on conditions
+    const steps = baseSteps.filter(step => {
         if (step.conditional === 'google' && googleConnected) return false;
+        if (step.conditional === 'scheduleGenerate' && !isScheduleGenerate && !isAdmin) return false;
+        if (step.conditional === 'templatesManage' && !isTemplatesManage && !isAdmin) return false;
+        if (step.conditional === 'saveSchedule' && !isAssignmentsEdit && !isScheduleGenerate && !isAdmin) return false;
+        if (step.conditional === 'scheduleExport' && !isScheduleExport && !isAdmin) return false;
         return true;
     });
 
     // Check whether to show the prompt on mount
     useEffect(() => {
-        if (isAdmin || !userId) return;
-        const completed = localStorage.getItem(getStorageKey(userId));
-        const dismissed = localStorage.getItem(getDismissedKey(userId));
+        if (!userId) return;
+        const completed = localStorage.getItem(getStorageKey(userId, tourVariant));
+        const dismissed = localStorage.getItem(getDismissedKey(userId, tourVariant));
         if (!completed && !dismissed) {
-            // Small delay so the calendar has time to render
             const timer = setTimeout(() => setShowPrompt(true), 800);
             return () => clearTimeout(timer);
         }
-    }, [userId, isAdmin]);
+    }, [userId, tourVariant]);
 
     // Scroll to and measure the current step's target element
     const measureTarget = useCallback(() => {
@@ -147,26 +242,30 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
         const el = document.querySelector(step.target);
 
         if (!el) {
-            // If target not found, skip to next step
             if (currentStep < steps.length - 1) {
                 setCurrentStep(prev => prev + 1);
             }
             return;
         }
 
-        // Scroll element into view (centered)
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-        // Allow scroll to settle, then measure
         rafRef.current = requestAnimationFrame(() => {
             const rect = el.getBoundingClientRect();
+            const vh = window.innerHeight;
             const padding = 8;
+
+            // For elements taller than the viewport, clamp the spotlight
+            // to the visible portion so it doesn't extend off-screen
+            const clampedTop = Math.max(0, rect.top) - padding;
+            const clampedBottom = Math.min(vh, rect.bottom) + padding;
+
             const paddedRect = {
-                top: rect.top - padding,
+                top: clampedTop,
                 left: rect.left - padding,
                 width: rect.width + padding * 2,
-                height: rect.height + padding * 2,
-                bottom: rect.bottom + padding,
+                height: clampedBottom - clampedTop,
+                bottom: clampedBottom,
                 right: rect.right + padding,
             };
             setTargetRect(paddedRect);
@@ -177,7 +276,6 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
     useEffect(() => {
         measureTarget();
 
-        // Re-measure on scroll/resize
         const handleReposition = () => measureTarget();
         window.addEventListener('resize', handleReposition);
         window.addEventListener('scroll', handleReposition, true);
@@ -188,7 +286,7 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
         };
     }, [measureTarget]);
 
-    // After tooltip renders, re-adjust its position using the actual height
+    // Re-adjust tooltip position using actual height
     useEffect(() => {
         if (!tooltipRef.current || !targetRect || !isActive) return;
         const th = tooltipRef.current.offsetHeight;
@@ -198,18 +296,14 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
         const pad = 16;
         const arrowGap = 14;
         const vh = window.innerHeight;
-
         let top = tooltipPos.top;
 
         if (step.placement === 'top') {
-            // Recalculate with real height
             top = targetRect.top - arrowGap - th;
             if (top < pad) {
-                top = targetRect.bottom + arrowGap - (targetRect.height - targetRect.height); // flip
                 top = targetRect.top + targetRect.height + arrowGap;
             }
         } else {
-            // bottom – check overflow
             if (top + th > vh - pad) {
                 top = targetRect.top - arrowGap - th;
                 if (top < pad) top = pad;
@@ -230,17 +324,16 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
 
     const dismissPrompt = () => {
         setShowPrompt(false);
-        localStorage.setItem(getDismissedKey(userId), 'true');
+        localStorage.setItem(getDismissedKey(userId, tourVariant), 'true');
     };
 
     const endTour = (completed = false) => {
         setIsActive(false);
         setTargetRect(null);
         if (completed) {
-            localStorage.setItem(getStorageKey(userId), 'true');
+            localStorage.setItem(getStorageKey(userId, tourVariant), 'true');
         }
-        // Also mark dismissed so the prompt doesn't come back
-        localStorage.setItem(getDismissedKey(userId), 'true');
+        localStorage.setItem(getDismissedKey(userId, tourVariant), 'true');
     };
 
     const nextStep = () => {
@@ -258,18 +351,21 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
     };
 
     const retakeTour = () => {
-        localStorage.removeItem(getStorageKey(userId));
-        localStorage.removeItem(getDismissedKey(userId));
+        localStorage.removeItem(getStorageKey(userId, tourVariant));
+        localStorage.removeItem(getDismissedKey(userId, tourVariant));
         setCurrentStep(0);
         setIsActive(true);
     };
 
-    // Don't render anything for admins
-    if (isAdmin) return null;
+    if (!userId) return null;
 
-    const completed = localStorage.getItem(getStorageKey(userId));
-    const dismissed = localStorage.getItem(getDismissedKey(userId));
+    const completed = localStorage.getItem(getStorageKey(userId, tourVariant));
+    const dismissed = localStorage.getItem(getDismissedKey(userId, tourVariant));
     const step = steps[currentStep];
+
+    const promptMessage = hasAdminPerms
+        ? 'New here? Take a quick tour of the calendar admin tools!'
+        : 'New here? Take a quick tour of the calendar!';
 
     return (
         <>
@@ -277,8 +373,8 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
             {showPrompt && !isActive && (
                 <div className="tour-prompt" id="tour-prompt-banner">
                     <div className="tour-prompt-text">
-                        <span>✨</span>
-                        <span>New here? Take a quick tour of the calendar!</span>
+                        <span>{hasAdminPerms ? '🛡️' : '✨'}</span>
+                        <span>{promptMessage}</span>
                     </div>
                     <div className="tour-prompt-actions">
                         <button className="tour-prompt-start" onClick={startTour}>
@@ -291,7 +387,7 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
                 </div>
             )}
 
-            {/* ── Retake Tour button (shown when tour has been completed/dismissed and prompt is hidden) ── */}
+            {/* ── Retake Tour button ── */}
             {!isActive && !showPrompt && (completed || dismissed) && (
                 <button className="tour-retake" onClick={retakeTour} title="Retake the calendar tour">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -306,7 +402,6 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
             {/* ── Active Tour Overlay ── */}
             {isActive && targetRect && step && (
                 <div className="tour-overlay active">
-                    {/* Spotlight cutout */}
                     <div
                         className="tour-spotlight"
                         style={{
@@ -317,18 +412,16 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
                         }}
                     />
 
-                    {/* Click-catcher for overlay area (clicking outside closes nothing — we force next/skip) */}
                     <div
                         className="tour-overlay-bg"
                         style={{ background: 'transparent' }}
                         onClick={(e) => e.stopPropagation()}
                     />
 
-                    {/* Tooltip */}
                     <div
                         className="tour-tooltip"
                         ref={tooltipRef}
-                        key={currentStep} /* re-trigger animation on step change */
+                        key={`${tourVariant}-${currentStep}`}
                         style={{
                             top: tooltipPos.top,
                             left: tooltipPos.left,
@@ -339,7 +432,6 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
                         <h3 className="tour-tooltip-title">{step.title}</h3>
                         <p className="tour-tooltip-body">{step.body}</p>
 
-                        {/* Progress dots */}
                         <div className="tour-progress">
                             {steps.map((_, i) => (
                                 <div
@@ -352,7 +444,6 @@ const CalendarTour = ({ userId, isAdmin, googleConnected }) => {
                             </span>
                         </div>
 
-                        {/* Controls */}
                         <div className="tour-controls">
                             <button className="tour-btn tour-btn-skip" onClick={() => endTour(false)}>
                                 Skip Tour
