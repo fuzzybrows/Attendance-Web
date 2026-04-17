@@ -26,6 +26,15 @@ export const verifyOTP = createAsyncThunk('auth/verifyOTP', async (data, { rejec
     }
 });
 
+export const refreshToken = createAsyncThunk('auth/refreshToken', async (_, { rejectWithValue }) => {
+    try {
+        const response = await axios.post('/auth/refresh');
+        return response.data;
+    } catch (err) {
+        return rejectWithValue(err.response?.data || { detail: 'Refresh failed' });
+    }
+});
+
 
 const authSlice = createSlice({
     name: 'auth',
@@ -82,6 +91,12 @@ const authSlice = createSlice({
             })
             .addCase(verifyOTP.rejected, (state, action) => {
                 state.error = action.payload?.detail || 'Verification failed';
+            })
+            .addCase(refreshToken.fulfilled, (state, action) => {
+                state.token = action.payload.access_token;
+                state.user = action.payload.member;
+                localStorage.setItem('token', action.payload.access_token);
+                localStorage.setItem('user', JSON.stringify(action.payload.member));
             });
     }
 });
