@@ -20,6 +20,12 @@ vi.mock('react-big-calendar', () => ({
                 Single Tap
             </button>
             <button 
+                data-testid="trigger-single-select" 
+                onClick={() => onSelectSlot({ slots: [new Date('2026-04-10')], action: 'select' })}
+            >
+                Single Long Press
+            </button>
+            <button 
                 data-testid="trigger-multi-drag" 
                 onClick={() => onSelectSlot({ 
                     slots: [new Date('2026-04-10'), new Date('2026-04-11')], 
@@ -43,7 +49,7 @@ vi.mock('axios', () => ({
     }
 }));
 
-const setupStore = () => {
+const setupStore = (permissions = ['admin']) => {
     return configureStore({
         reducer: {
             calendar: calendarReducer,
@@ -53,7 +59,7 @@ const setupStore = () => {
         preloadedState: {
             auth: {
                 token: 'test-token',
-                user: { id: 1, email: 'test@example.com', permissions: ['admin'] }
+                user: { id: 1, email: 'test@example.com', permissions }
             },
             members: { items: [] },
             calendar: {
@@ -148,6 +154,44 @@ describe('Calendar Mobile Touch Interaction Tests', () => {
         fireEvent.click(multiDragBtn);
 
         // Expect the Day Selection Modal TO appear
+        const modalHeader = await screen.findByText(/Set your availability for/i);
+        expect(modalHeader).toBeInTheDocument();
+    });
+
+    it('allows single-day long-press (select action) on mobile — regression for dd90775', async () => {
+        setTouchDevice(true);
+        const store = setupStore();
+        render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <Calendar />
+                </MemoryRouter>
+            </Provider>
+        );
+
+        // Trigger a single-day select (long-press) — this was broken by dd90775
+        const singleSelectBtn = screen.getByTestId('trigger-single-select');
+        fireEvent.click(singleSelectBtn);
+
+        // Expect the Day Selection Modal TO appear
+        const modalHeader = await screen.findByText(/Set your availability for/i);
+        expect(modalHeader).toBeInTheDocument();
+    });
+
+    it('allows single-day taps for member+schedule_read users', async () => {
+        setTouchDevice(true);
+        const store = setupStore(['member', 'schedule_read']);
+        render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <Calendar />
+                </MemoryRouter>
+            </Provider>
+        );
+
+        const singleTapBtn = screen.getByTestId('trigger-single-tap');
+        fireEvent.click(singleTapBtn);
+
         const modalHeader = await screen.findByText(/Set your availability for/i);
         expect(modalHeader).toBeInTheDocument();
     });
