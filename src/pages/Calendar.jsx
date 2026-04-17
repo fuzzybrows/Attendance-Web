@@ -276,8 +276,9 @@ const Calendar = () => {
 
     const handleSelectSlot = ({ slots, action }) => {
         if (isMonthLocked) return;
-        // On touch devices, block drag-to-select entirely (prevents accidental selections when scrolling)
-        if (isTouchDevice && action === 'select') return;
+        // On touch devices, block multi-day drag-to-select but allow single-day taps
+        const uniqueSlotDays = new Set(slots.map(d => d.toDateString())).size;
+        if (isTouchDevice && action === 'select' && uniqueSlotDays > 1) return;
         console.log("Slot selected:", { slots, action, isMultiSelectMode });
         
         // Extract unique local dates
