@@ -60,10 +60,10 @@ function ResetPassword() {
                 {step === 1 ? (
                     <form onSubmit={handleRequest}>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', textAlign: 'center' }}>
-                            Enter your email or phone number to receive a reset code.
+                            Enter your email to receive a reset code.
                         </p>
                         <input
-                            placeholder="Email or Phone"
+                            placeholder="Email"
                             value={login}
                             onChange={e => setLogin(e.target.value)}
                             required

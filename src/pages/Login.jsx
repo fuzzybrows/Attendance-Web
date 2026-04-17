@@ -184,10 +184,10 @@ function Login() {
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.05em',
                             }}>
-                                Email or Phone
+                                Email
                             </label>
                             <input
-                                placeholder="Enter your email or phone number"
+                                placeholder="Enter your email"
                                 value={credentials.login}
                                 onChange={e => setCredentials({ ...credentials, login: e.target.value })}
                                 required
