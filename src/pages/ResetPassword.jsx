@@ -131,7 +131,7 @@ function ResetPassword() {
                         WebkitTextFillColor: 'transparent',
                         letterSpacing: '-0.02em',
                     }}>
-                        Reset Password
+                        {appTitle}
                     </h1>
                     <p style={{
                         color: 'var(--text-secondary)',
