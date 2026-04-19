@@ -51,6 +51,7 @@ function QRAttendance() {
                     longitude = position.coords.longitude;
                 } catch (locErr) {
                     console.warn("Location access denied/failed", locErr);
+                    // Proceed without location, backend might reject if radius is enforced
                 }
 
                 const payload = {
@@ -71,6 +72,7 @@ function QRAttendance() {
                 if (err.response?.status === 409) {
                     setMessage('Your attendance has already been recorded for this session.');
                 } else if (err.response?.status === 403) {
+                    // Fraud prevention error (Device Lock or Geofence)
                     setMessage(err.response.data.detail || 'Attendance blocked by security rules.');
                 } else if (err.response?.status === 401) {
                     setMessage(err.response.data.detail || 'QR code has expired. Please scan again.');
