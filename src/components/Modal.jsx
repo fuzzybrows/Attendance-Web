@@ -1,17 +1,18 @@
 import React from 'react';
 
-const Modal = ({ title, isOpen, onClose, onSubmit, hideFooter, hideCancel, submitText = 'Submit', children }) => {
+const Modal = ({ title, isOpen, onClose, onSubmit, hideFooter, hideCancel, wide, submitText = 'Submit', children }) => {
     if (!isOpen) return null;
 
     return (
         <div className="modal-overlay" style={{ display: 'block', overflowY: 'auto', padding: '1rem' }}>
             <form className="glass-card" onSubmit={(e) => { e.preventDefault(); if (onSubmit) onSubmit(e); }} style={{ 
-                maxWidth: '500px', 
+                maxWidth: wide ? '800px' : '500px', 
                 width: '100%', 
                 margin: '2rem auto', 
                 position: 'relative',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                maxHeight: '90vh'
             }}>
                 {onClose && (
                     <button 
@@ -24,7 +25,7 @@ const Modal = ({ title, isOpen, onClose, onSubmit, hideFooter, hideCancel, submi
                     </button>
                 )}
                 <h2 style={{ marginTop: 0, paddingRight: '2rem', flexShrink: 0 }}>{title}</h2>
-                <div style={{ paddingRight: '0.5rem', flex: 1 }}>{children}</div>
+                <div style={{ paddingRight: '0.5rem', flex: 1, overflowY: 'auto', minHeight: 0 }}>{children}</div>
                 {!hideFooter && <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
                     {!hideCancel && <button type="button" className="btn" style={{ background: 'transparent', border: '1px solid var(--text-secondary)' }} onClick={onClose}>Cancel</button>}
                     {onSubmit && <button type="submit" className="btn" style={{ background: 'var(--primary-color)', color: 'white' }}>{submitText}</button>}

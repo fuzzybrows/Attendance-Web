@@ -648,12 +648,13 @@ const Calendar = () => {
 
             {/* Event Details Modal */}
             {selectedEvent && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-                    <div style={{ background: '#1e293b', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.4)', width: '100%', maxWidth: '420px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, padding: '1rem', overflowY: 'auto' }}>
+                    <div style={{ background: '#1e293b', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.4)', width: '100%', maxWidth: '720px', border: '1px solid rgba(255,255,255,0.1)', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', flexShrink: 0 }}>
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: '#f8fafc' }}>{selectedEvent.title}</h2>
                             <button onClick={() => setSelectedEvent(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
                         </div>
+                        <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
                         <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '1rem' }}>{selectedEvent.start.toLocaleString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</p>
 
                         {selectedEvent.is_external ? (
@@ -737,7 +738,7 @@ const Calendar = () => {
 
                                         {isEditingAssignments ? (
                                             <>
-                                                <div style={{ display: 'grid', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                                                     {assignableRoles.map(role => {
                                                         const roleAssigns = selectedEvent.assignments.filter(a => a.role === role);
                                                         if (roleAssigns.length === 0) roleAssigns.push(null); // ensure at least one empty slot
@@ -910,6 +911,7 @@ const Calendar = () => {
                                 )}
                             </>
                         )}
+                        </div>
                     </div>
                 </div>
             )}

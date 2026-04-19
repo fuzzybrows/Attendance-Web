@@ -218,16 +218,19 @@ function Sessions() {
 
     const handleSaveAssignments = async () => {
         try {
+            // Filter out empty/unassigned slots before saving
+            const validAssignments = editedAssignments.filter(a => a.member_id);
             const payload = {
                 sessions: [{
                     session_id: viewSession.id,
                     session_title: viewSession.title,
-                    session_date: viewSession.start_time,
-                    assignments: editedAssignments
+                    start_time: viewSession.start_time,
+                    type: viewSession.type,
+                    assignments: validAssignments
                 }]
             };
             await axios.post('/calendar/schedule/save', payload);
-            setSessionAssignments(editedAssignments);
+            setSessionAssignments(validAssignments);
             setIsEditingAssignments(false);
             toast.success('Assignments saved successfully!');
         } catch (e) {
@@ -620,6 +623,7 @@ function Sessions() {
                 <Modal
                     title={isEditMode ? "Edit Session Details" : "Session Details"}
                     isOpen={!!viewSession}
+                    wide
                     onClose={() => {
                         setViewSession(null);
                         setIsEditMode(false);
@@ -683,14 +687,13 @@ function Sessions() {
                                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>No roles assigned for this session.</p>
                                     )
                                 ) : (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
                                         {assignableRoles.map(role => {
                                             const roleAssigns = editedAssignments.filter(a => a.role === role);
                                             if (roleAssigns.length === 0) roleAssigns.push(null); // ensure at least one empty slot
                                             return (
-                                                <div key={role} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                                                    <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'capitalize', width: '100px', paddingTop: '0.45rem', flexShrink: 0 }}>{role.replace('_', ' ')}</label>
-                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                <div key={role} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                    <label style={{ fontSize: '0.85rem', color: '#a5b4fc', textTransform: 'capitalize', fontWeight: 600 }}>{role.replace('_', ' ')}</label>
                                                         {roleAssigns.map((assign, idx) => (
                                                             <div key={`${role}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                                 <select 
@@ -752,7 +755,6 @@ function Sessions() {
                                                         >
                                                             <span style={{ fontSize: '0.9rem' }}>+</span> Add {role.replace('_', ' ')}
                                                         </button>
-                                                    </div>
                                                 </div>
                                             );
                                         })}
