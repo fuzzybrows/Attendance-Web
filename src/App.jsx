@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { logout } from './store/authSlice';
+import { logout, refreshToken } from './store/authSlice';
 import Navigation from './components/Navigation';
 import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
@@ -124,6 +124,13 @@ function NotFound() {
 
 function AppRoutes() {
   useSessionExpiry();
+  const dispatch = useDispatch();
+  const { token } = useSelector(state => state.auth);
+
+  // Sync permissions on app startup
+  useEffect(() => {
+    if (token) dispatch(refreshToken());
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="container">
       <Navigation />
