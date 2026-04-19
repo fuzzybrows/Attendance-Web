@@ -178,8 +178,19 @@ function Dashboard() {
     // QR auto-refresh
     useEffect(() => {
         if (qrActive && currentSession && canWriteAttendance) {
+            // Auto-stop when session ends
+            const endTime = currentSession.end_time ? new Date(currentSession.end_time).getTime() : null;
+            if (endTime && Date.now() >= endTime) {
+                setQrActive(false);
+                return;
+            }
+
             fetchQrToken(currentSession.id);
             qrIntervalRef.current = setInterval(() => {
+                if (endTime && Date.now() >= endTime) {
+                    setQrActive(false);
+                    return;
+                }
                 fetchQrToken(currentSession.id);
             }, QR_REFRESH_SECONDS * 1000);
 
@@ -187,9 +198,17 @@ function Dashboard() {
                 setQrCountdown(prev => (prev > 0 ? prev - 1 : QR_REFRESH_SECONDS));
             }, 1000);
 
+            // Schedule exact auto-stop at session end
+            let endTimer;
+            if (endTime) {
+                const msUntilEnd = endTime - Date.now();
+                endTimer = setTimeout(() => setQrActive(false), msUntilEnd);
+            }
+
             return () => {
                 clearInterval(qrIntervalRef.current);
                 clearInterval(countdownRef.current);
+                if (endTimer) clearTimeout(endTimer);
             };
         } else {
             setQrUrl('');
