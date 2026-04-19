@@ -21,13 +21,15 @@ function Dashboard() {
     const { user } = useSelector(state => state.auth);
 
     const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
-    const canReadSessions = isAdmin || user?.permissions?.includes('sessions_read');
+    const isSessionStarter = user?.permissions?.includes('session_starter');
+    const canReadSessions = isAdmin || isSessionStarter || user?.permissions?.includes('sessions_read');
     const canCreateSessions = isAdmin || user?.permissions?.includes('sessions_create');
     const canDeleteSessions = isAdmin || user?.permissions?.includes('sessions_delete');
-    const canReadAttendance = isAdmin || user?.permissions?.includes('attendance_read');
-    const canWriteAttendance = isAdmin || user?.permissions?.includes('attendance_write');
+    const canReadAttendance = isAdmin || isSessionStarter || user?.permissions?.includes('attendance_read');
+    const canWriteAttendance = isAdmin || isSessionStarter || user?.permissions?.includes('attendance_write');
     const canDeleteAttendance = isAdmin || user?.permissions?.includes('attendance_delete');
     const canCreateMembers = isAdmin || user?.permissions?.includes('members_create');
+    const canManuallyMarkAttendance = canWriteAttendance && !isSessionStarter;
 
     const [isMemberModalOpen, setMemberModalOpen] = useState(false);
     const [isSessionModalOpen, setSessionModalOpen] = useState(false);
@@ -354,9 +356,11 @@ function Dashboard() {
                                         🗑️ Delete {selectedSessions.size} selected
                                     </button>
                                 )}
-                                <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => navigate('/sessions')}>
-                                    View All Sessions →
-                                </button>
+                                {!isSessionStarter && (
+                                    <button className="btn" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} onClick={() => navigate('/sessions')}>
+                                        View All Sessions →
+                                    </button>
+                                )}
                             </div>
                         </div>
                         {(() => {
@@ -366,7 +370,7 @@ function Dashboard() {
                             }
                             return (
                                 <>
-                                    {activeSessions.length > 0 && (
+                                    {activeSessions.length > 0 && !isSessionStarter && (
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                             <input
                                                 type="checkbox"
@@ -387,19 +391,21 @@ function Dashboard() {
                                         {activeSessions.map(s => (
                                             <div key={s.id} className={`glass-card session-card ${selectedSessions.has(s.id) ? 'selected' : ''}`} onClick={() => dispatch(setCurrentSession(s))}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedSessions.has(s.id)}
-                                                        onChange={(e) => {
-                                                            e.stopPropagation();
-                                                            const next = new Set(selectedSessions);
-                                                            if (e.target.checked) next.add(s.id);
-                                                            else next.delete(s.id);
-                                                            setSelectedSessions(next);
-                                                        }}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        style={{ accentColor: '#818cf8' }}
-                                                    />
+                                                    {!isSessionStarter && (
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedSessions.has(s.id)}
+                                                            onChange={(e) => {
+                                                                e.stopPropagation();
+                                                                const next = new Set(selectedSessions);
+                                                                if (e.target.checked) next.add(s.id);
+                                                                else next.delete(s.id);
+                                                                setSelectedSessions(next);
+                                                            }}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            style={{ accentColor: '#818cf8' }}
+                                                        />
+                                                    )}
                                                     <div>
                                                         <strong>{s.title}</strong><br />
                                                         <small>{new Date(s.start_time).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}</small>
@@ -523,26 +529,28 @@ function Dashboard() {
                                     <table>
                                         <thead>
                                             <tr>
-                                                <th style={{ width: '30px' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={Array.isArray(attendance) && attendance.length > 0 && selectedAttendance.size === attendance.length}
-                                                        onChange={(e) => {
-                                                            if (e.target.checked && Array.isArray(attendance)) {
-                                                                setSelectedAttendance(new Set(attendance.map(a => a.id)));
-                                                            } else {
-                                                                setSelectedAttendance(new Set());
-                                                            }
-                                                        }}
-                                                        style={{ accentColor: '#818cf8' }}
-                                                    />
-                                                </th>
+                                                {canDeleteAttendance && (
+                                                    <th style={{ width: '30px' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={Array.isArray(attendance) && attendance.length > 0 && selectedAttendance.size === attendance.length}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked && Array.isArray(attendance)) {
+                                                                    setSelectedAttendance(new Set(attendance.map(a => a.id)));
+                                                                } else {
+                                                                    setSelectedAttendance(new Set());
+                                                                }
+                                                            }}
+                                                            style={{ accentColor: '#818cf8' }}
+                                                        />
+                                                    </th>
+                                                )}
                                                 <th>Member</th>
                                                 <th>Time</th>
                                                 <th>Type</th>
                                                 <th>Marked By</th>
                                                 <th>Location</th>
-                                                <th>Action</th>
+                                                {canDeleteAttendance && <th>Action</th>}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -552,19 +560,21 @@ function Dashboard() {
                                                 const memberName = member ? `${member.first_name} ${member.last_name}` : 'Unknown';
                                                 return (
                                                     <tr key={a.id} style={{ background: selectedAttendance.has(a.id) ? 'rgba(129, 140, 248, 0.08)' : undefined }}>
-                                                        <td>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedAttendance.has(a.id)}
-                                                                onChange={(e) => {
-                                                                    const next = new Set(selectedAttendance);
-                                                                    if (e.target.checked) next.add(a.id);
-                                                                    else next.delete(a.id);
-                                                                    setSelectedAttendance(next);
-                                                                }}
-                                                                style={{ accentColor: '#818cf8' }}
-                                                            />
-                                                        </td>
+                                                        {canDeleteAttendance && (
+                                                            <td>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={selectedAttendance.has(a.id)}
+                                                                    onChange={(e) => {
+                                                                        const next = new Set(selectedAttendance);
+                                                                        if (e.target.checked) next.add(a.id);
+                                                                        else next.delete(a.id);
+                                                                        setSelectedAttendance(next);
+                                                                    }}
+                                                                    style={{ accentColor: '#818cf8' }}
+                                                                />
+                                                            </td>
+                                                        )}
                                                         <td>{memberName}</td>
                                                         <td>
                                                             {new Date(a.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
@@ -602,7 +612,7 @@ function Dashboard() {
                                         </button>
                                     </div>
                                 )}
-                                {canWriteAttendance && (
+                                {canManuallyMarkAttendance && (
                                     <div style={{ marginTop: '2rem' }}>
                                         <h3>Mark Manual Attendance</h3>
                                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
