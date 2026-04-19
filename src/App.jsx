@@ -16,13 +16,19 @@ import Calendar from './pages/Calendar';
 import { Toaster } from 'react-hot-toast';
 import { Analytics } from '@vercel/analytics/react';
 
-const ProtectedRoute = ({ children, requiredPermission }) => {
+const ProtectedRoute = ({ children, requiredPermission, blockedForSessionStarter }) => {
   const { token, user } = useSelector(state => state.auth);
 
   if (!token) return <Navigate to="/login" />;
 
   if (requiredPermission && !user?.permissions?.includes(requiredPermission)) {
     return <Navigate to="/" />;
+  }
+
+  if (blockedForSessionStarter) {
+    const isAdmin = user?.permissions?.includes('admin') || user?.roles?.includes('admin');
+    const isSessionStarterOnly = user?.permissions?.includes('session_starter') && !isAdmin;
+    if (isSessionStarterOnly) return <Navigate to="/" />;
   }
 
   return children;
@@ -128,7 +134,7 @@ function AppRoutes() {
         <Route path="/qr-attendance" element={<QRAttendance />} />
 
         <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+        <Route path="/calendar" element={<ProtectedRoute blockedForSessionStarter><Calendar /></ProtectedRoute>} />
         <Route path="/members" element={<ProtectedRoute requiredPermission="admin"><MembersManagement /></ProtectedRoute>} />
         <Route path="/sessions" element={<ProtectedRoute requiredPermission="admin"><Sessions /></ProtectedRoute>} />
         <Route path="/stats" element={<ProtectedRoute requiredPermission="admin"><Statistics /></ProtectedRoute>} />
