@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
@@ -13,18 +13,22 @@ function QRAttendance() {
     const qrToken = searchParams.get('token');
 
     const hasValidParams = !!(sessionId && qrToken);
+    const hasSubmitted = useRef(false);
 
     const [status, setStatus] = useState(hasValidParams ? 'processing' : 'error');
     const [message, setMessage] = useState(hasValidParams ? '' : 'Invalid QR code link.');
 
     useEffect(() => {
         if (!hasValidParams) return;
+        if (hasSubmitted.current) return;
 
         if (!authToken) {
             const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
             navigate(`/login?redirect=${returnUrl}`);
             return;
         }
+
+        hasSubmitted.current = true;
 
         // Mark attendance
         const markAttendance = async () => {

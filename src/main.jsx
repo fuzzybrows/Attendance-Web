@@ -50,8 +50,10 @@ axios.interceptors.response.use(
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Don't logout if this was the refresh call itself failing
-      if (!error.config?.url?.endsWith('/auth/refresh')) {
+      // Don't logout for QR mark (401 = expired QR token, not bad auth)
+      // or for the refresh call itself
+      const url = error.config?.url || '';
+      if (!url.endsWith('/auth/refresh') && !url.includes('/attendance/qr/mark')) {
         store.dispatch(logout());
         window.location.href = '/login';
       }

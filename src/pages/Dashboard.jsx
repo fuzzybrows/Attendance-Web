@@ -221,6 +221,42 @@ function Dashboard() {
         }
     }, [qrActive, currentSession, isAdmin, fetchQrToken, canWriteAttendance]);
 
+    // Live attendance updates via WebSocket while QR is active
+    useEffect(() => {
+        if (!qrActive || !currentSession || !canReadAttendance) return;
+
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+        const wsUrl = apiUrl.replace(/^http/, 'ws') + `/ws/attendance/${currentSession.id}`;
+        let ws;
+        let fallbackPoll;
+
+        try {
+            ws = new WebSocket(wsUrl);
+            ws.onmessage = () => {
+                // Server says attendance changed — re-fetch the list
+                dispatch(fetchAttendance(currentSession.id));
+            };
+            ws.onerror = () => {
+                // Fallback to polling if WS fails
+                if (!fallbackPoll) {
+                    fallbackPoll = setInterval(() => dispatch(fetchAttendance(currentSession.id)), 10_000);
+                }
+            };
+            ws.onclose = () => {
+                if (!fallbackPoll) {
+                    fallbackPoll = setInterval(() => dispatch(fetchAttendance(currentSession.id)), 10_000);
+                }
+            };
+        } catch {
+            fallbackPoll = setInterval(() => dispatch(fetchAttendance(currentSession.id)), 10_000);
+        }
+
+        return () => {
+            if (ws) ws.close();
+            if (fallbackPoll) clearInterval(fallbackPoll);
+        };
+    }, [qrActive, currentSession, canReadAttendance, dispatch]);
+
     useEffect(() => {
         if (canReadSessions || canReadAttendance || canCreateMembers) {
             dispatch(fetchMembers());
