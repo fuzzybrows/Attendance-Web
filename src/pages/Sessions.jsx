@@ -806,6 +806,9 @@ function Sessions() {
                                 <button type="button" className="btn" style={{ background: 'transparent', border: '1px solid var(--text-secondary)' }} onClick={() => setIsEditMode(false)}>
                                     Cancel
                                 </button>
+                                <button type="button" className="btn" style={{ background: 'var(--primary-color)', color: 'white' }} onClick={handleUpdateSession}>
+                                    Save Changes
+                                </button>
                             </div>
                         </div>
                     )}

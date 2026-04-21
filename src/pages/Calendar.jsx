@@ -662,10 +662,26 @@ const Calendar = () => {
             {showMatrix && teamAvailability ? (
                 /* Option B: Availability Matrix */
                 <div className="glass-card" style={{ padding: '1.5rem', overflow: 'hidden' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>
-                            Availability Matrix — {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                        </h2>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <button
+                                onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}
+                                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#f8fafc', borderRadius: '8px', padding: '0.35rem 0.6rem', cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.15s' }}
+                                title="Previous month"
+                            >
+                                ‹
+                            </button>
+                            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc', minWidth: '180px', textAlign: 'center' }}>
+                                Availability Matrix — {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                            </h2>
+                            <button
+                                onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}
+                                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#f8fafc', borderRadius: '8px', padding: '0.35rem 0.6rem', cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.15s' }}
+                                title="Next month"
+                            >
+                                ›
+                            </button>
+                        </div>
                         <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
                             {teamAvailability.total_members} members · {teamAvailability.sessions.length} sessions
                         </span>
