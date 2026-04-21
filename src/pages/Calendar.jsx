@@ -51,6 +51,8 @@ const Calendar = () => {
     const isScheduleGenerate = isAdmin || currentUser?.permissions?.includes('schedule_generate');
     const isScheduleExport = isAdmin || currentUser?.permissions?.includes('schedule_export');
     const isSessionsCreate = isAdmin || currentUser?.permissions?.includes('sessions_create');
+    // Only admin/schedule managers see team availability matrix, badges, and detailed availability
+    const isScheduleManager = isAdmin || isAssignmentsEdit || isScheduleGenerate;
     const [assignableRoles, setAssignableRoles] = useState([]);
     const [availableTypes, setAvailableTypes] = useState([]);
     const [availableStatuses] = useState(['scheduled', 'active', 'concluded', 'archived']);
@@ -91,11 +93,11 @@ const Calendar = () => {
         const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         const isSelected = selectedDays.includes(localDateStr);
 
-        // Option A: Availability badge for admins
-        const dayAvail = isScheduleRead && teamAvailability?.days?.[localDateStr];
+        // Option A: Availability badge for admins/schedule managers only
+        const dayAvail = isScheduleManager && teamAvailability?.days?.[localDateStr];
         const totalMembers = teamAvailability?.total_members || 0;
         let badgeEl = null;
-        if (isScheduleRead && totalMembers > 0 && !isMultiSelectMode && showBadges) {
+        if (isScheduleManager && totalMembers > 0 && !isMultiSelectMode && showBadges) {
             const available = dayAvail ? dayAvail.available : totalMembers;
             const unavailable = dayAvail ? dayAvail.unavailable : 0;
             let badgeClass = 'avail-badge avail-badge-green';
@@ -160,8 +162,10 @@ const Calendar = () => {
             
             // Managers/privileged users need extra data
             if (isAssignmentsEdit || isTemplatesManage || isScheduleGenerate || isScheduleRead) {
-                dispatch(fetchMonthAvailability({ year, month, token }));
-                dispatch(fetchTeamAvailability({ year, month, token }));
+                if (isScheduleManager) {
+                    dispatch(fetchMonthAvailability({ year, month, token }));
+                    dispatch(fetchTeamAvailability({ year, month, token }));
+                }
                 dispatch(fetchMembers());
                 
                 // Fetch assignable roles for dynamic UI
@@ -193,7 +197,7 @@ const Calendar = () => {
             dispatch(fetchUnavailableDays({ year, month, token }));
             dispatch(fetchExternalEvents({ year, month, token }));
         }
-    }, [currentDate, token, dispatch, isAdmin, isAssignmentsEdit, isScheduleGenerate, isScheduleRead, isTemplatesManage]);
+    }, [currentDate, token, dispatch, isAdmin, isAssignmentsEdit, isScheduleGenerate, isScheduleRead, isScheduleManager, isTemplatesManage]);
 
     // Once session types load, seed the new template type if still empty
     const availableTypesRef = React.useRef(availableTypes);
@@ -296,7 +300,7 @@ const Calendar = () => {
                 // Refetch availability to update UI state
                 const year = currentDate.getFullYear();
                 const month = currentDate.getMonth() + 1;
-                if (isAssignmentsEdit || isScheduleGenerate || isScheduleRead) dispatch(fetchMonthAvailability({ year, month, token }));
+                if (isScheduleManager) dispatch(fetchMonthAvailability({ year, month, token }));
                 toast.success("Availability updated!");
             })
             .catch((err) => toast.error("Failed to update availability: " + err));
@@ -348,7 +352,7 @@ const Calendar = () => {
             const month = currentDate.getMonth() + 1;
             dispatch(fetchSchedule({ year, month, token }));
             dispatch(fetchUnavailableDays({ year, month, token }));
-            if (isScheduleRead || isAssignmentsEdit || isScheduleGenerate || isTemplatesManage) dispatch(fetchMonthAvailability({ year, month, token }));
+            if (isScheduleManager) dispatch(fetchMonthAvailability({ year, month, token }));
             toast.success(`${count} day(s) marked as ${isAvail ? 'available' : 'unavailable'}.`);
         })
         .catch((err) => toast.error("Failed to update availability: " + err));
@@ -619,7 +623,7 @@ const Calendar = () => {
                             )}
                         </div>
                     )}
-                    {isScheduleRead && (
+                    {isScheduleManager && (
                         <>
                             <button
                                 onClick={() => setShowMatrix(!showMatrix)}
@@ -762,7 +766,7 @@ const Calendar = () => {
                             }
 
                             // Option A: Heatmap tint for admin users
-                            if (isScheduleRead && teamAvailability?.days?.[localDateStr]) {
+                            if (isScheduleManager && teamAvailability?.days?.[localDateStr]) {
                                 const unavailCount = teamAvailability.days[localDateStr].unavailable;
                                 if (unavailCount >= 3) {
                                     style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
@@ -853,7 +857,7 @@ const Calendar = () => {
                                                             const year = currentDate.getFullYear();
                                                             const month = currentDate.getMonth() + 1;
                                                             dispatch(fetchSchedule({ year, month, token }));
-                                                            if (isScheduleRead || isAssignmentsEdit || isTemplatesManage || isScheduleGenerate) dispatch(fetchMonthAvailability({ year, month, token }));
+                                                            if (isScheduleManager) dispatch(fetchMonthAvailability({ year, month, token }));
                                                             toast.success(`All sessions on ${dayStr} marked as unavailable.`);
                                                         })
                                                         .catch((err) => toast.error(err));
@@ -1067,7 +1071,7 @@ const Calendar = () => {
                                     </>
                                 )}
                                 {/* Option C: Team Availability Section */}
-                                {isScheduleRead && teamAvailability && !selectedEvent.is_external && (() => {
+                                {isScheduleManager && teamAvailability && !selectedEvent.is_external && (() => {
                                     const sessionData = teamAvailability.sessions.find(s => s.id === selectedEvent.id);
                                     if (!sessionData) return null;
                                     const { available_count, total, opted_out_members } = sessionData;
@@ -1174,7 +1178,7 @@ const Calendar = () => {
                         </div>
 
                         {/* Team Availability for the selected day */}
-                        {isScheduleRead && selectedDays.length === 1 && (() => {
+                        {isScheduleManager && selectedDays.length === 1 && (() => {
                             const dayStr = selectedDays[0];
                             const dayAvail = teamAvailability?.days?.[dayStr];
                             const totalMembers = teamAvailability?.total_members || 0;
