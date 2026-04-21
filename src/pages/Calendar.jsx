@@ -20,6 +20,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
 import CalendarTour from '../components/CalendarTour';
+import AddSessionModal from '../components/AddSessionModal';
 
 const localizer = momentLocalizer(moment);
 
@@ -49,8 +50,12 @@ const Calendar = () => {
     const isTemplatesManage = isAdmin || currentUser?.permissions?.includes('templates_manage');
     const isScheduleGenerate = isAdmin || currentUser?.permissions?.includes('schedule_generate');
     const isScheduleExport = isAdmin || currentUser?.permissions?.includes('schedule_export');
+    const isSessionsCreate = isAdmin || currentUser?.permissions?.includes('sessions_create');
     const [assignableRoles, setAssignableRoles] = useState([]);
     const [availableTypes, setAvailableTypes] = useState([]);
+    const [availableStatuses] = useState(['scheduled', 'active', 'concluded', 'archived']);
+    const [isAddSessionOpen, setIsAddSessionOpen] = useState(false);
+    const [addSessionDate, setAddSessionDate] = useState(null);
     const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
     const [showMatrix, setShowMatrix] = useState(false);
     const [showBadges, setShowBadges] = useState(true);
@@ -1099,7 +1104,7 @@ const Calendar = () => {
             {/* Day Selection Modal (Single-Day Mode) */}
             {!isMultiSelectMode && selectedDays.length > 0 && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-                    <div style={{ background: '#1e293b', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.4)', width: '100%', maxWidth: '360px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ background: '#1e293b', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 10px 40px rgba(0,0,0,0.4)', width: '100%', maxWidth: '400px', border: '1px solid rgba(255,255,255,0.1)', maxHeight: '80vh', overflowY: 'auto' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0, color: '#f8fafc' }}>
                                 📅 {selectedDays.length === 1 ? selectedDays[0] : `${selectedDays[0]} to ${selectedDays[selectedDays.length - 1]}`}
@@ -1130,6 +1135,17 @@ const Calendar = () => {
                                     ✅ Mark {selectedDays.length > 1 ? `${selectedDays.length} days` : 'as'} Available
                                 </button>
                             )}
+                            {isSessionsCreate && (
+                                <button
+                                    onClick={() => { setAddSessionDate(selectedDays[0]); setSelectedDays([]); setIsAddSessionOpen(true); }}
+                                    style={{
+                                        width: '100%', padding: '0.875rem', borderRadius: '12px', fontWeight: 600, cursor: 'pointer',
+                                        background: 'rgba(99,102,241,0.1)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.2)', transition: 'all 0.2s'
+                                    }}
+                                >
+                                    ➕ Add Session
+                                </button>
+                            )}
                             <button
                                 onClick={() => setSelectedDays([])}
                                 style={{
@@ -1140,6 +1156,87 @@ const Calendar = () => {
                                 Cancel
                             </button>
                         </div>
+
+                        {/* Team Availability for the selected day */}
+                        {isScheduleRead && selectedDays.length === 1 && (() => {
+                            const dayStr = selectedDays[0];
+                            const dayAvail = teamAvailability?.days?.[dayStr];
+                            const totalMembers = teamAvailability?.total_members || 0;
+                            if (!dayAvail || totalMembers === 0) return null;
+
+                            const availableCount = dayAvail.available;
+                            const unavailableMembers = dayAvail.unavailable_members || [];
+                            const pct = totalMembers > 0 ? (availableCount / totalMembers) * 100 : 100;
+                            const barColor = pct >= 80 ? '#34d399' : pct >= 50 ? '#fbbf24' : '#f87171';
+
+                            // Available members = all members minus unavailable
+                            const unavailableIds = new Set(unavailableMembers.map(m => m.id));
+                            const availableMembers = (teamAvailability?.members || []).filter(m => !unavailableIds.has(m.id));
+
+                            // Find sessions on this day for per-session breakdown
+                            const daySessions = (teamAvailability?.sessions || []).filter(s => {
+                                const sDate = s.start_time?.split('T')[0];
+                                return sDate === dayStr;
+                            });
+
+                            return (
+                                <div className="team-avail-section" style={{ marginTop: '1rem' }}>
+                                    <h4>Team Availability</h4>
+                                    <p style={{ fontSize: '0.85rem', color: '#cbd5e1', marginBottom: '0.5rem' }}>
+                                        <strong style={{ color: barColor }}>{availableCount}</strong> of {totalMembers} members available
+                                    </p>
+                                    <div className="team-avail-bar">
+                                        <div className="team-avail-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
+                                    </div>
+
+                                    {unavailableMembers.length > 0 && (
+                                        <>
+                                            <p style={{ fontSize: '0.75rem', color: '#f87171', fontWeight: 600, marginBottom: '0.35rem' }}>
+                                                Unavailable ({unavailableMembers.length})
+                                            </p>
+                                            <ul className="team-avail-list" style={{ marginBottom: '0.5rem' }}>
+                                                {unavailableMembers.map(m => (
+                                                    <li key={m.id} className="unavailable">{m.name}</li>
+                                                ))}
+                                            </ul>
+                                        </>
+                                    )}
+                                    <details style={{ cursor: 'pointer' }}>
+                                        <summary style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 600, marginBottom: '0.35rem' }}>
+                                            Available ({availableMembers.length})
+                                        </summary>
+                                        <ul className="team-avail-list" style={{ marginTop: '0.35rem' }}>
+                                            {availableMembers.map(m => (
+                                                <li key={m.id} className="available">{m.name}</li>
+                                            ))}
+                                        </ul>
+                                    </details>
+
+                                    {daySessions.length > 0 && (
+                                        <div style={{ marginTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.75rem' }}>
+                                            <p style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600, marginBottom: '0.35rem' }}>Per Session</p>
+                                            {daySessions.map(session => {
+                                                const sessionPct = totalMembers > 0 ? (session.available_count / totalMembers) * 100 : 100;
+                                                const sBarColor = sessionPct >= 80 ? '#34d399' : sessionPct >= 50 ? '#fbbf24' : '#f87171';
+                                                return (
+                                                    <div key={session.id} style={{ marginTop: '0.35rem', padding: '0.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                        <p style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e2e8f0', marginBottom: '0.25rem' }}>{session.title}</p>
+                                                        <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
+                                                            <span style={{ color: sBarColor, fontWeight: 600 }}>{session.available_count}/{totalMembers}</span> available
+                                                        </p>
+                                                        {session.opted_out_members?.length > 0 && (
+                                                            <p style={{ fontSize: '0.7rem', color: '#f87171' }}>
+                                                                Unavailable: {session.opted_out_members.map(m => m.name).join(', ')}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             )}
@@ -1500,6 +1597,15 @@ const Calendar = () => {
                     </div>
                 </div>
             )}
+            {/* Add Session Modal (from day click) */}
+            <AddSessionModal
+                isOpen={isAddSessionOpen}
+                onClose={() => { setIsAddSessionOpen(false); setAddSessionDate(null); }}
+                availableTypes={availableTypes}
+                availableStatuses={availableStatuses}
+                defaultDate={addSessionDate}
+            />
+
             {/* Recurring Sessions Modal */}
             {isRecurringModalOpen && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>

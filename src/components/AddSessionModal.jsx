@@ -11,13 +11,24 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-const AddSessionModal = ({ isOpen, onClose, availableTypes = [], availableStatuses = [] }) => {
+const AddSessionModal = ({ isOpen, onClose, availableTypes = [], availableStatuses = [], defaultDate = null }) => {
     const dispatch = useDispatch();
     const token = useSelector(state => state.auth.token);
     const tzName = useMemo(() => new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || 'CDT', []);
 
     const defaultType = availableTypes[0] || '';
     const defaultStatus = availableStatuses[0] || '';
+
+    const getDefaultStart = (dateStr) => {
+        if (!dateStr) return new Date();
+        const d = new Date(dateStr + 'T09:00:00');
+        return isNaN(d.getTime()) ? new Date() : d;
+    };
+    const getDefaultEnd = (dateStr) => {
+        if (!dateStr) return new Date(Date.now() + 2 * 60 * 60 * 1000);
+        const d = new Date(dateStr + 'T11:00:00');
+        return isNaN(d.getTime()) ? new Date(Date.now() + 2 * 60 * 60 * 1000) : d;
+    };
 
     const [templates, setTemplates] = useState([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -26,9 +37,20 @@ const AddSessionModal = ({ isOpen, onClose, availableTypes = [], availableStatus
         title: '',
         type: defaultType,
         status: defaultStatus,
-        start_time: new Date(),
-        end_time: new Date(Date.now() + 2 * 60 * 60 * 1000)
+        start_time: getDefaultStart(defaultDate),
+        end_time: getDefaultEnd(defaultDate)
     }));
+
+    // Re-seed dates when defaultDate or modal open state changes
+    useEffect(() => {
+        if (isOpen) {
+            setFormData(prev => ({
+                ...prev,
+                start_time: getDefaultStart(defaultDate),
+                end_time: getDefaultEnd(defaultDate)
+            }));
+        }
+    }, [isOpen, defaultDate]);
 
     // Fetch templates when modal opens
     useEffect(() => {
@@ -59,16 +81,15 @@ const AddSessionModal = ({ isOpen, onClose, availableTypes = [], availableStatus
         const template = templates.find(t => String(t.id) === String(templateId));
         if (!template) return;
 
-        // Use today's date with the template's time
-        const now = new Date();
-        const startTime = new Date(now);
+        // Use the form's current date (preserves defaultDate) with the template's time
+        const baseDate = new Date(formData.start_time);
+        const startTime = new Date(baseDate);
         if (template.start_time) {
-            // start_time from backend is "HH:MM:SS" or similar
             const [h, m] = template.start_time.split(':').map(Number);
             startTime.setHours(h, m, 0, 0);
         }
 
-        const endTime = new Date(now);
+        const endTime = new Date(baseDate);
         if (template.end_time) {
             const [h, m] = template.end_time.split(':').map(Number);
             endTime.setHours(h, m, 0, 0);
@@ -96,8 +117,8 @@ const AddSessionModal = ({ isOpen, onClose, availableTypes = [], availableStatus
             title: '',
             type: availableTypes[0] || '',
             status: availableStatuses[0] || '',
-            start_time: new Date(),
-            end_time: new Date(Date.now() + 2 * 60 * 60 * 1000)
+            start_time: getDefaultStart(defaultDate),
+            end_time: getDefaultEnd(defaultDate)
         });
         setSelectedTemplateId('');
         onClose();
