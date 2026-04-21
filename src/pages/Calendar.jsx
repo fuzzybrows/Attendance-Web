@@ -1619,6 +1619,7 @@ const Calendar = () => {
             )}
             {/* Add Session Modal (from day click) */}
             <AddSessionModal
+                key={`add-session-${isAddSessionOpen}-${addSessionDate}`}
                 isOpen={isAddSessionOpen}
                 onClose={() => { setIsAddSessionOpen(false); setAddSessionDate(null); }}
                 availableTypes={availableTypes}

@@ -19,35 +19,35 @@ description: How to run tests and linting for the frontend
 - Gate admin-only tests with proper `permissions` in the preloaded auth state
 - Always verify tests pass before committing: `npx vitest run`
 
+## Running Linting (MUST pass with 0 errors)
+
+// turbo
+1. Run ESLint on the full project:
+```bash
+npm run lint
+```
+
 ## Running Tests
 
 // turbo
-1. Run the full test suite:
+2. Run the full test suite:
 ```bash
 npx vitest run
 ```
 
-2. Run a specific test file:
+3. Run a specific test file:
 ```bash
 npx vitest run src/__tests__/QRAttendance.test.jsx
 ```
 
-3. Run tests in watch mode:
+4. Run tests in watch mode:
 ```bash
 npm run test:watch
 ```
 
-4. Run tests with coverage:
+5. Run tests with coverage:
 ```bash
 npm run coverage
-```
-
-## Running Linting
-
-// turbo
-5. Run ESLint on the entire src directory:
-```bash
-npx eslint src/
 ```
 
 ## Notes

@@ -16,9 +16,6 @@ const AddSessionModal = ({ isOpen, onClose, availableTypes = [], availableStatus
     const token = useSelector(state => state.auth.token);
     const tzName = useMemo(() => new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value || 'CDT', []);
 
-    const defaultType = availableTypes[0] || '';
-    const defaultStatus = availableStatuses[0] || '';
-
     const getDefaultStart = (dateStr) => {
         if (!dateStr) return new Date();
         const d = new Date(dateStr + 'T09:00:00');
@@ -35,22 +32,11 @@ const AddSessionModal = ({ isOpen, onClose, availableTypes = [], availableStatus
 
     const [formData, setFormData] = useState(() => ({
         title: '',
-        type: defaultType,
-        status: defaultStatus,
+        type: availableTypes[0] || '',
+        status: availableStatuses[0] || '',
         start_time: getDefaultStart(defaultDate),
         end_time: getDefaultEnd(defaultDate)
     }));
-
-    // Re-seed dates when defaultDate or modal open state changes
-    useEffect(() => {
-        if (isOpen) {
-            setFormData(prev => ({
-                ...prev,
-                start_time: getDefaultStart(defaultDate),
-                end_time: getDefaultEnd(defaultDate)
-            }));
-        }
-    }, [isOpen, defaultDate]);
 
     // Fetch templates when modal opens
     useEffect(() => {
@@ -64,15 +50,6 @@ const AddSessionModal = ({ isOpen, onClose, availableTypes = [], availableStatus
             });
         }
     }, [isOpen, token]);
-
-    // Sync defaults when availableTypes/availableStatuses load from backend
-    useEffect(() => {
-        setFormData(prev => ({
-            ...prev,
-            type: prev.type || availableTypes[0] || '',
-            status: prev.status || availableStatuses[0] || ''
-        }));
-    }, [availableTypes, availableStatuses]);
 
     const handleTemplateSelect = (templateId) => {
         setSelectedTemplateId(templateId);
