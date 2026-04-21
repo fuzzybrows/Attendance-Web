@@ -124,7 +124,7 @@ const ADMIN_STEPS = [
         title: 'Availability Matrix',
         body: 'Toggle this to switch between the calendar view and a detailed availability matrix. The matrix shows every member as a row and every session as a column, with ✓/✗ indicators so you can see who\'s available at a glance.',
         placement: 'bottom',
-        conditional: 'scheduleRead',
+        conditional: 'scheduleManager',
     },
     {
         target: '#calendar-grid',
@@ -132,7 +132,7 @@ const ADMIN_STEPS = [
         title: 'Availability Badges & Heatmap',
         body: 'Day cells now show colored badges (e.g. 10/12) indicating how many members are available. Green = all available, amber = 1-2 unavailable, red = 3+. You can toggle these on/off with the "Badges" button. Click any session to see the full team availability breakdown.',
         placement: 'center',
-        conditional: 'scheduleRead',
+        conditional: 'scheduleManager',
     },
     {
         target: '#btn-export-ics',
@@ -237,7 +237,7 @@ const CalendarTour = ({ userId, isAdmin, googleConnected, permissions = {} }) =>
         if (step.conditional === 'templatesManage' && !isTemplatesManage && !isAdmin) return false;
         if (step.conditional === 'saveSchedule' && !isAssignmentsEdit && !isScheduleGenerate && !isAdmin) return false;
         if (step.conditional === 'scheduleExport' && !isScheduleExport && !isAdmin) return false;
-        if (step.conditional === 'scheduleRead' && !isScheduleRead && !isAdmin) return false;
+        if (step.conditional === 'scheduleManager' && !isAssignmentsEdit && !isScheduleGenerate && !isAdmin) return false;
         return true;
     });
 

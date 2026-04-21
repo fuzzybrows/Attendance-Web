@@ -78,7 +78,7 @@ vi.mock('axios', () => ({
     }
 }));
 
-const setupStore = (isAdmin = false) => {
+const setupStore = (permissions = []) => {
     return configureStore({
         reducer: {
             calendar: calendarReducer,
@@ -88,7 +88,7 @@ const setupStore = (isAdmin = false) => {
         preloadedState: {
             auth: {
                 token: 'test-token',
-                user: { id: 1, email: 'test@example.com', permissions: isAdmin ? ['admin'] : [] }
+                user: { id: 1, email: 'test@example.com', permissions }
             },
             members: { items: mockMembers },
             calendar: {
@@ -108,11 +108,10 @@ describe('Calendar Page Integration Tests', () => {
     });
 
     it('renders the calendar and action buttons for admins', async () => {
-        const isAdmin = true;
         localStorage.setItem('token', 'test-token');
         localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['admin'] }));
         
-        const store = setupStore(isAdmin);
+        const store = setupStore(['admin']);
         render(
             <Provider store={store}>
                 <MemoryRouter>
@@ -130,7 +129,7 @@ describe('Calendar Page Integration Tests', () => {
         localStorage.setItem('token', 'test-token');
         localStorage.setItem('user', JSON.stringify({ id: 1, email: 'admin@test.com', permissions: ['admin'] }));
 
-        const store = setupStore(true);
+        const store = setupStore(['admin']);
         render(
             <Provider store={store}>
                 <MemoryRouter>
@@ -170,7 +169,7 @@ describe('Calendar Page Integration Tests', () => {
         localStorage.setItem('token', 'test-token');
         localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['admin'] }));
 
-        const store = setupStore(true);
+        const store = setupStore(['admin']);
         render(
             <Provider store={store}>
                 <MemoryRouter>
@@ -194,7 +193,7 @@ describe('Calendar Page Integration Tests', () => {
         localStorage.setItem('token', 'test-token');
         localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['admin'] }));
 
-        const store = setupStore(true);
+        const store = setupStore(['admin']);
         render(
             <Provider store={store}>
                 <MemoryRouter>
@@ -210,7 +209,7 @@ describe('Calendar Page Integration Tests', () => {
         localStorage.setItem('token', 'test-token');
         localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['admin'] }));
 
-        const store = setupStore(true);
+        const store = setupStore(['admin']);
         render(
             <Provider store={store}>
                 <MemoryRouter>
@@ -226,7 +225,7 @@ describe('Calendar Page Integration Tests', () => {
         localStorage.setItem('token', 'test-token');
         localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: [] }));
 
-        const store = setupStore(false);
+        const store = setupStore([]);
         render(
             <Provider store={store}>
                 <MemoryRouter>
@@ -243,5 +242,63 @@ describe('Calendar Page Integration Tests', () => {
         expect(screen.queryByText(/Auto Generate Assignments/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/Availability Matrix/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/Save Schedule/i)).not.toBeInTheDocument();
+    });
+
+    // ─── schedule_read permission boundary tests ────────────────────────
+
+    it('does NOT show availability matrix or badges for schedule_read users', async () => {
+        localStorage.setItem('token', 'test-token');
+        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['schedule_read'] }));
+
+        const store = setupStore(['schedule_read']);
+        render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <Calendar />
+                </MemoryRouter>
+            </Provider>
+        );
+
+        await screen.findByTestId('mock-calendar');
+
+        // These are admin/manager features — schedule_read should NOT see them
+        expect(screen.queryByText(/Availability Matrix/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Badges On/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Badges Off/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Auto Generate Assignments/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Export ▾/i)).not.toBeInTheDocument();
+    });
+
+    it('shows availability matrix and badges for schedule_generate users', async () => {
+        localStorage.setItem('token', 'test-token');
+        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['schedule_generate'] }));
+
+        const store = setupStore(['schedule_generate']);
+        render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <Calendar />
+                </MemoryRouter>
+            </Provider>
+        );
+
+        expect(await screen.findByText(/Availability Matrix/i)).toBeInTheDocument();
+        expect(screen.getByText(/Auto Generate Assignments/i)).toBeInTheDocument();
+    });
+
+    it('shows availability matrix and badges for assignments_edit users', async () => {
+        localStorage.setItem('token', 'test-token');
+        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['assignments_edit'] }));
+
+        const store = setupStore(['assignments_edit']);
+        render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <Calendar />
+                </MemoryRouter>
+            </Provider>
+        );
+
+        expect(await screen.findByText(/Availability Matrix/i)).toBeInTheDocument();
     });
 });

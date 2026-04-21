@@ -161,7 +161,7 @@ const Calendar = () => {
             const month = currentDate.getMonth() + 1; // 1-indexed for backend
             
             // Managers/privileged users need extra data
-            if (isAssignmentsEdit || isTemplatesManage || isScheduleGenerate || isScheduleRead) {
+            if (isScheduleManager || isTemplatesManage) {
                 if (isScheduleManager) {
                     dispatch(fetchMonthAvailability({ year, month, token }));
                     dispatch(fetchTeamAvailability({ year, month, token }));
@@ -197,7 +197,7 @@ const Calendar = () => {
             dispatch(fetchUnavailableDays({ year, month, token }));
             dispatch(fetchExternalEvents({ year, month, token }));
         }
-    }, [currentDate, token, dispatch, isAdmin, isAssignmentsEdit, isScheduleGenerate, isScheduleRead, isScheduleManager, isTemplatesManage]);
+    }, [currentDate, token, dispatch, isAdmin, isScheduleManager, isTemplatesManage]);
 
     // Once session types load, seed the new template type if still empty
     const availableTypesRef = React.useRef(availableTypes);
