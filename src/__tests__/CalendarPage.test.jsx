@@ -166,4 +166,82 @@ describe('Calendar Page Integration Tests', () => {
         expect(janeOption.disabled).toBe(true);
         expect(janeOption.text).toContain('(Not Sunday Lead)');
     });
+    it('renders export dropdown with sub-menu groups for admins', async () => {
+        localStorage.setItem('token', 'test-token');
+        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['admin'] }));
+
+        const store = setupStore(true);
+        render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <Calendar />
+                </MemoryRouter>
+            </Provider>
+        );
+
+        const exportBtn = await screen.findByText(/Export ▾/i);
+        expect(exportBtn).toBeInTheDocument();
+
+        // Open the dropdown
+        fireEvent.click(exportBtn);
+
+        // Should show sub-menu group labels (not individual CSV/PDF items flat)
+        expect(screen.getByText(/Export Schedule/i)).toBeInTheDocument();
+        expect(screen.getByText(/Export Availability/i)).toBeInTheDocument();
+    });
+
+    it('renders availability matrix toggle for admins', async () => {
+        localStorage.setItem('token', 'test-token');
+        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['admin'] }));
+
+        const store = setupStore(true);
+        render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <Calendar />
+                </MemoryRouter>
+            </Provider>
+        );
+
+        expect(await screen.findByText(/Availability Matrix/i)).toBeInTheDocument();
+    });
+
+    it('renders badges toggle for admins', async () => {
+        localStorage.setItem('token', 'test-token');
+        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: ['admin'] }));
+
+        const store = setupStore(true);
+        render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <Calendar />
+                </MemoryRouter>
+            </Provider>
+        );
+
+        expect(await screen.findByText(/Badges On/i)).toBeInTheDocument();
+    });
+
+    it('does not render admin buttons for regular members', async () => {
+        localStorage.setItem('token', 'test-token');
+        localStorage.setItem('user', JSON.stringify({ id: 1, email: 'test@example.com', permissions: [] }));
+
+        const store = setupStore(false);
+        render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <Calendar />
+                </MemoryRouter>
+            </Provider>
+        );
+
+        // Wait for page to render
+        await screen.findByTestId('mock-calendar');
+
+        // Admin-only buttons should NOT be visible
+        expect(screen.queryByText(/Export ▾/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Auto Generate Assignments/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Availability Matrix/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Save Schedule/i)).not.toBeInTheDocument();
+    });
 });
