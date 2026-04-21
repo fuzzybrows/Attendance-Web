@@ -1,0 +1,20 @@
+{
+  "name": "attendance-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "npx playwright test",
+    "test:ui": "npx playwright test --ui",
+    "test:headed": "npx playwright test --headed",
+    "test:debug": "npx playwright test --debug",
+    "report": "npx playwright show-report",
+    "seed": "npx tsx scripts/seed.ts",
+    "teardown": "npx tsx scripts/teardown.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "dotenv": "^16.4.0"
+  }
+}
