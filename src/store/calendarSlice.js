@@ -20,6 +20,18 @@ export const fetchMonthAvailability = createAsyncThunk(
     }
 );
 
+export const fetchTeamAvailability = createAsyncThunk(
+    'calendar/fetchTeamAvailability',
+    async ({ year, month, token }, { rejectWithValue }) => {
+        try {
+            const response = await axios.get(`/calendar/availability/team/${year}/${month}`, authConfig(token));
+            return response.data;
+        } catch (err) {
+            return rejectWithValue(err.response?.data?.detail || 'Failed to fetch team availability');
+        }
+    }
+);
+
 export const updateAvailability = createAsyncThunk(
     'calendar/updateAvailability',
     async ({ sessionId, isAvailable, token }, { rejectWithValue }) => {
@@ -114,11 +126,13 @@ export const fetchExternalEvents = createAsyncThunk(
 
 const initialState = {
     availability: null, // { sessions: [] }
+    teamAvailability: null, // { total_members, members, sessions, days }
     schedule: null, // { sessions: [] }
     unavailableDays: [], // ['YYYY-MM-DD']
     externalEvents: [], // [{ id, title, start, end, is_external: true }]
     googleConnected: false,
     status: 'idle',
+    teamAvailabilityStatus: 'idle',
     externalStatus: 'idle',
     error: null,
 };
@@ -147,6 +161,19 @@ const calendarSlice = createSlice({
         });
         builder.addCase(fetchMonthAvailability.rejected, (state, action) => {
             state.status = 'failed';
+            state.error = action.payload;
+        });
+
+        // Fetch Team Availability
+        builder.addCase(fetchTeamAvailability.pending, (state) => {
+            state.teamAvailabilityStatus = 'loading';
+        });
+        builder.addCase(fetchTeamAvailability.fulfilled, (state, action) => {
+            state.teamAvailabilityStatus = 'succeeded';
+            state.teamAvailability = action.payload;
+        });
+        builder.addCase(fetchTeamAvailability.rejected, (state, action) => {
+            state.teamAvailabilityStatus = 'failed';
             state.error = action.payload;
         });
 

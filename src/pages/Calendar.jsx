@@ -5,6 +5,7 @@ import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import {
     fetchMonthAvailability,
+    fetchTeamAvailability,
     fetchSchedule,
     generateSchedule,
     updateAvailability,
@@ -26,7 +27,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const Calendar = () => {
     const dispatch = useDispatch();
-    const { availability, schedule, unavailableDays, externalEvents, googleConnected, status, error } = useSelector((state) => state.calendar);
+    const { availability, teamAvailability, schedule, unavailableDays, externalEvents, googleConnected, status, error } = useSelector((state) => state.calendar);
     const { items: members } = useSelector((state) => state.members);
     const { token, user: currentUser } = useSelector((state) => state.auth);
 
@@ -51,6 +52,9 @@ const Calendar = () => {
     const [assignableRoles, setAssignableRoles] = useState([]);
     const [availableTypes, setAvailableTypes] = useState([]);
     const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
+    const [showMatrix, setShowMatrix] = useState(false);
+    const [showBadges, setShowBadges] = useState(true);
+    const [showExportMenu, setShowExportMenu] = useState(false);
     const todayStr = new Date().toISOString().split('T')[0];
     const jsDayInit = new Date(todayStr + 'T00:00:00').getDay();
     const initDayOfWeek = jsDayInit === 0 ? 6 : jsDayInit - 1;
@@ -77,12 +81,32 @@ const Calendar = () => {
         type: 'danger' 
     });
 
-    // Custom Date Header component for checkboxes
+    // Custom Date Header component for checkboxes + availability badges
     const CustomDateHeader = ({ label, date }) => {
         const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         const isSelected = selectedDays.includes(localDateStr);
 
-        if (!isMultiSelectMode) return <span>{label}</span>;
+        // Option A: Availability badge for admins
+        const dayAvail = isScheduleRead && teamAvailability?.days?.[localDateStr];
+        const totalMembers = teamAvailability?.total_members || 0;
+        let badgeEl = null;
+        if (isScheduleRead && totalMembers > 0 && !isMultiSelectMode && showBadges) {
+            const available = dayAvail ? dayAvail.available : totalMembers;
+            const unavailable = dayAvail ? dayAvail.unavailable : 0;
+            let badgeClass = 'avail-badge avail-badge-green';
+            if (unavailable >= 3) badgeClass = 'avail-badge avail-badge-red';
+            else if (unavailable >= 1) badgeClass = 'avail-badge avail-badge-amber';
+            badgeEl = <span className={badgeClass}>{available}/{totalMembers}</span>;
+        }
+
+        if (!isMultiSelectMode) {
+            return (
+                <div style={{ position: 'relative', width: '100%' }}>
+                    <span>{label}</span>
+                    {badgeEl}
+                </div>
+            );
+        }
 
         return (
             <div 
@@ -132,6 +156,7 @@ const Calendar = () => {
             // Managers/privileged users need extra data
             if (isAssignmentsEdit || isTemplatesManage || isScheduleGenerate || isScheduleRead) {
                 dispatch(fetchMonthAvailability({ year, month, token }));
+                dispatch(fetchTeamAvailability({ year, month, token }));
                 dispatch(fetchMembers());
                 
                 // Fetch assignable roles for dynamic UI
@@ -385,45 +410,42 @@ const Calendar = () => {
         dispatch(setLocalSchedule({ ...schedule, sessions: newSessions }));
     };
 
-    const handleExportCSV = async () => {
+    const handleExport = async (endpoint, filename, mimeType = 'application/octet-stream') => {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth() + 1;
         try {
-            const response = await axios.get(`/calendar/schedule/export_csv?year=${year}&month=${month}`, {
+            const response = await axios.get(`${endpoint}?year=${year}&month=${month}`, {
                 headers: { Authorization: `Bearer ${token}` },
                 responseType: 'blob'
             });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: mimeType }));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `choir_schedule_${year}_${month}.csv`);
+            link.setAttribute('download', filename.replace('{y}', year).replace('{m}', month));
             document.body.appendChild(link);
             link.click();
             link.remove();
         } catch (err) {
-            toast.error("Failed to export CSV: " + (err?.response?.data?.detail || err.message));
+            toast.error("Failed to export: " + (err?.response?.data?.detail || err.message));
         }
     };
 
-    const handleExportPDF = async () => {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth() + 1;
-        try {
-            const response = await axios.get(`/calendar/schedule/export_pdf?year=${year}&month=${month}`, {
-                headers: { Authorization: `Bearer ${token}` },
-                responseType: 'blob'
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `choir_schedule_${year}_${month}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-        } catch (err) {
-            toast.error("Failed to export PDF: " + (err?.response?.data?.detail || err.message));
-        }
-    };
+    const EXPORT_GROUPS = [
+        {
+            label: 'Export Schedule', icon: '📄',
+            formats: [
+                { label: 'CSV', endpoint: '/calendar/schedule/export_csv', filename: 'choir_schedule_{y}_{m}.csv', mime: 'text/csv' },
+                { label: 'PDF', endpoint: '/calendar/schedule/export_pdf', filename: 'choir_schedule_{y}_{m}.pdf', mime: 'application/pdf' },
+            ]
+        },
+        {
+            label: 'Export Availability', icon: '📊',
+            formats: [
+                { label: 'CSV', endpoint: '/calendar/availability/export_csv', filename: 'availability_matrix_{y}_{m}.csv', mime: 'text/csv' },
+                { label: 'PDF', endpoint: '/calendar/availability/export_pdf', filename: 'availability_matrix_{y}_{m}.pdf', mime: 'application/pdf' },
+            ]
+        },
+    ];
 
     const handleSyncICS = async () => {
         try {
@@ -474,7 +496,7 @@ const Calendar = () => {
                     The schedule for {moment(currentDate).format('MMMM YYYY')} has been finalized. Availability is now locked.
                 </div>
             )}
-            <CalendarTour userId={currentUser?.id} isAdmin={isAdmin} googleConnected={googleConnected} permissions={{ isScheduleGenerate, isAssignmentsEdit, isTemplatesManage, isScheduleExport }} />
+            <CalendarTour userId={currentUser?.id} isAdmin={isAdmin} googleConnected={googleConnected} permissions={{ isScheduleGenerate, isAssignmentsEdit, isTemplatesManage, isScheduleExport, isScheduleRead }} />
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <h1 id="calendar-page-title" className="font-bold text-white" style={{ fontSize: 'clamp(1.5rem, 5vw, 2.5rem)', margin: 0 }}>Schedule & Calendar</h1>
@@ -548,23 +570,70 @@ const Calendar = () => {
                         </button>
                     )}
                     {isScheduleExport && (
+                        <div style={{ position: 'relative', flex: '1 1 auto', minWidth: '100px' }}>
+                            <button
+                                onClick={() => setShowExportMenu(!showExportMenu)}
+                                id="btn-export"
+                                style={{ width: '100%', textAlign: 'center' }}
+                                className="bg-gray-800 text-white px-4 py-2 rounded-xl shadow-lg shadow-slate-900/40 hover:bg-gray-900 transition flex items-center justify-center gap-2 font-medium text-sm"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                Export ▾
+                            </button>
+                            {showExportMenu && (
+                                <>
+                                    <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setShowExportMenu(false)} />
+                                    <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.25rem', background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.4)', zIndex: 50, minWidth: '200px' }}>
+                                        {EXPORT_GROUPS.map((group, gi) => (
+                                            <div key={group.label} style={{ position: 'relative' }} className="export-menu-group">
+                                                {gi > 0 && <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)' }} />}
+                                                <div
+                                                    style={{ width: '100%', textAlign: 'left', padding: '0.6rem 1rem', color: '#f8fafc', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', cursor: 'default' }}
+                                                    className="export-menu-trigger"
+                                                >
+                                                    <span>{group.icon} {group.label}</span>
+                                                    <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>▸</span>
+                                                </div>
+                                                <div className="export-submenu">
+                                                    {group.formats.map(fmt => (
+                                                        <button
+                                                            key={fmt.label}
+                                                            onClick={() => { handleExport(fmt.endpoint, fmt.filename, fmt.mime); setShowExportMenu(false); }}
+                                                            style={{ width: '100%', textAlign: 'left', padding: '0.5rem 1rem', background: 'none', border: 'none', color: '#f8fafc', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
+                                                            onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.08)'}
+                                                            onMouseLeave={e => e.target.style.background = 'none'}
+                                                        >
+                                                            {fmt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                    {isScheduleRead && (
                         <>
                             <button
-                                onClick={handleExportCSV}
-                                id="btn-export-csv"
+                                onClick={() => setShowMatrix(!showMatrix)}
+                                id="btn-avail-matrix"
                                 style={{ flex: '1 1 auto', minWidth: '100px', textAlign: 'center' }}
-                                className="bg-gray-800 text-white px-4 py-2 rounded-xl shadow-lg shadow-slate-900/40 hover:bg-gray-900 transition font-medium text-sm"
+                                className={`px-4 py-2 rounded-xl shadow-lg transition font-medium text-sm flex items-center justify-center gap-2 ${showMatrix ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-200 hover:bg-slate-600'}`}
                             >
-                                Export CSV
+                                📊 {showMatrix ? 'Calendar View' : 'Availability Matrix'}
                             </button>
-                            <button
-                                onClick={handleExportPDF}
-                                style={{ flex: '1 1 auto', minWidth: '80px', textAlign: 'center' }}
-                                className="bg-red-700 text-white px-4 py-2 rounded-xl shadow-lg shadow-red-900/40 hover:bg-red-800 transition flex items-center justify-center gap-2 font-medium text-sm"
-                            >
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd"/><path d="M6 10a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H7z"/></svg>
-                                PDF
-                            </button>
+                            {!showMatrix && (
+                                <button
+                                    onClick={() => setShowBadges(!showBadges)}
+                                    style={{ flex: '0 0 auto', textAlign: 'center' }}
+                                    className={`px-3 py-2 rounded-xl shadow-lg transition font-medium text-sm ${showBadges ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}
+                                    title={showBadges ? 'Hide availability badges' : 'Show availability badges'}
+                                >
+                                    {showBadges ? '🏷️ Badges On' : '🏷️ Badges Off'}
+                                </button>
+                            )}
                         </>
                     )}
                 </div>
@@ -585,66 +654,133 @@ const Calendar = () => {
                 </div>
             )}
 
-            <div id="calendar-grid" className="glass-card calendar-container">
-                <BigCalendar
-                    localizer={localizer}
-                    events={events}
-                    date={currentDate}
-                    view={currentView}
-                    onView={(view) => setCurrentView(view)}
-                    startAccessor="start"
-                    endAccessor="end"
-                    style={{ height: '100%' }}
-                    onNavigate={(date) => setCurrentDate(date)}
-                    onSelectEvent={handleSelectEvent}
-                    onSelectSlot={handleSelectSlot}
-                    selectable
-                    longPressThreshold={10}
-                    views={['month', 'week', 'day']}
-                    components={{
-                        month: {
-                            dateHeader: CustomDateHeader
-                        }
-                    }}
-                    dayPropGetter={(date) => {
-                        const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                        
-                        let style = {};
-                        if (unavailableDays?.includes(localDateStr)) {
-                            style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
-                            style.opacity = 0.8;
-                        }
-                        
-                        if (isMultiSelectMode && selectedDays.includes(localDateStr)) {
-                            style.border = '2px solid #6366f1';
-                            style.backgroundColor = 'rgba(99, 102, 241, 0.15)';
-                            style.opacity = 1;
-                        }
+            {showMatrix && teamAvailability ? (
+                /* Option B: Availability Matrix */
+                <div className="glass-card" style={{ padding: '1.5rem', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>
+                            Availability Matrix — {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                        </h2>
+                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                            {teamAvailability.total_members} members · {teamAvailability.sessions.length} sessions
+                        </span>
+                    </div>
+                    <div className="avail-matrix-wrapper" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                        <table className="avail-matrix">
+                            <thead>
+                                <tr>
+                                    <th>Member</th>
+                                    {teamAvailability.sessions.map(s => {
+                                        const d = new Date(s.start_time);
+                                        return (
+                                            <th key={s.id}>
+                                                <div style={{ fontSize: '0.7rem', opacity: 0.7 }}>{d.toLocaleDateString('default', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                                                <div style={{ fontSize: '0.75rem', marginTop: '2px' }}>{s.title}</div>
+                                            </th>
+                                        );
+                                    })}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {teamAvailability.members.map(member => (
+                                    <tr key={member.id}>
+                                        <td>{member.name}</td>
+                                        {teamAvailability.sessions.map(s => {
+                                            const isOptedOut = s.opted_out_ids.includes(member.id);
+                                            return (
+                                                <td key={s.id} className={isOptedOut ? 'avail-cell-unavailable' : 'avail-cell-available'}>
+                                                    {isOptedOut ? '✗' : '✓'}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>Available</td>
+                                    {teamAvailability.sessions.map(s => (
+                                        <td key={s.id} style={{ color: s.available_count === s.total ? '#34d399' : s.available_count < s.total - 2 ? '#f87171' : '#fbbf24' }}>
+                                            {s.available_count}/{s.total}
+                                        </td>
+                                    ))}
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            ) : (
+                <div id="calendar-grid" className="glass-card calendar-container">
+                    <BigCalendar
+                        localizer={localizer}
+                        events={events}
+                        date={currentDate}
+                        view={currentView}
+                        onView={(view) => setCurrentView(view)}
+                        startAccessor="start"
+                        endAccessor="end"
+                        style={{ height: '100%' }}
+                        onNavigate={(date) => setCurrentDate(date)}
+                        onSelectEvent={handleSelectEvent}
+                        onSelectSlot={handleSelectSlot}
+                        selectable
+                        longPressThreshold={10}
+                        views={['month', 'week', 'day']}
+                        components={{
+                            month: {
+                                dateHeader: CustomDateHeader
+                            }
+                        }}
+                        dayPropGetter={(date) => {
+                            const localDateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                            
+                            let style = {};
+                            if (unavailableDays?.includes(localDateStr)) {
+                                style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                                style.opacity = 0.8;
+                            }
 
-                        return { style };
-                    }}
-                    eventPropGetter={(event) => {
-                        if (event.is_external) {
-                            return {
-                                className: 'external-event',
-                                style: {
-                                    opacity: 0.8,
-                                    fontSize: '0.85rem' // Slightly smaller text
+                            // Option A: Heatmap tint for admin users
+                            if (isScheduleRead && teamAvailability?.days?.[localDateStr]) {
+                                const unavailCount = teamAvailability.days[localDateStr].unavailable;
+                                if (unavailCount >= 3) {
+                                    style.backgroundColor = 'rgba(239, 68, 68, 0.08)';
+                                } else if (unavailCount >= 1) {
+                                    style.backgroundColor = 'rgba(245, 158, 11, 0.06)';
                                 }
-                            };
-                        }
-                        if (event.isAssigned) {
-                            return {
-                                className: 'assigned-event',
-                                style: {
-                                    fontWeight: '500' // fontWeight isn't globally forced, so inline is fine
-                                }
-                            };
-                        }
-                        return {};
-                    }}
-                />
-            </div>
+                            }
+                            
+                            if (isMultiSelectMode && selectedDays.includes(localDateStr)) {
+                                style.border = '2px solid #6366f1';
+                                style.backgroundColor = 'rgba(99, 102, 241, 0.15)';
+                                style.opacity = 1;
+                            }
+
+                            return { style };
+                        }}
+                        eventPropGetter={(event) => {
+                            if (event.is_external) {
+                                return {
+                                    className: 'external-event',
+                                    style: {
+                                        opacity: 0.8,
+                                        fontSize: '0.85rem' // Slightly smaller text
+                                    }
+                                };
+                            }
+                            if (event.isAssigned) {
+                                return {
+                                    className: 'assigned-event',
+                                    style: {
+                                        fontWeight: '500' // fontWeight isn't globally forced, so inline is fine
+                                    }
+                                };
+                            }
+                            return {};
+                        }}
+                    />
+                </div>
+            )}
 
             {/* Event Details Modal */}
             {selectedEvent && (
@@ -909,6 +1045,50 @@ const Calendar = () => {
                                         )}
                                     </>
                                 )}
+                                {/* Option C: Team Availability Section */}
+                                {isScheduleRead && teamAvailability && !selectedEvent.is_external && (() => {
+                                    const sessionData = teamAvailability.sessions.find(s => s.id === selectedEvent.id);
+                                    if (!sessionData) return null;
+                                    const { available_count, total, opted_out_members } = sessionData;
+                                    const pct = total > 0 ? (available_count / total) * 100 : 100;
+                                    const barColor = pct >= 80 ? '#34d399' : pct >= 50 ? '#fbbf24' : '#f87171';
+                                    const availableMembers = teamAvailability.members.filter(
+                                        m => !sessionData.opted_out_ids.includes(m.id)
+                                    );
+                                    return (
+                                        <div className="team-avail-section">
+                                            <h4>Team Availability</h4>
+                                            <p style={{ fontSize: '0.85rem', color: '#cbd5e1', marginBottom: '0.5rem' }}>
+                                                <strong style={{ color: barColor }}>{available_count}</strong> of {total} members available
+                                            </p>
+                                            <div className="team-avail-bar">
+                                                <div className="team-avail-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
+                                            </div>
+                                            {opted_out_members.length > 0 && (
+                                                <>
+                                                    <p style={{ fontSize: '0.75rem', color: '#f87171', fontWeight: 600, marginBottom: '0.35rem' }}>
+                                                        Unavailable ({opted_out_members.length})
+                                                    </p>
+                                                    <ul className="team-avail-list" style={{ marginBottom: '0.5rem' }}>
+                                                        {opted_out_members.map(m => (
+                                                            <li key={m.id} className="unavailable">{m.name}</li>
+                                                        ))}
+                                                    </ul>
+                                                </>
+                                            )}
+                                            <details style={{ cursor: 'pointer' }}>
+                                                <summary style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 600, marginBottom: '0.35rem' }}>
+                                                    Available ({availableMembers.length})
+                                                </summary>
+                                                <ul className="team-avail-list" style={{ marginTop: '0.35rem' }}>
+                                                    {availableMembers.map(m => (
+                                                        <li key={m.id} className="available">{m.name}</li>
+                                                    ))}
+                                                </ul>
+                                            </details>
+                                        </div>
+                                    );
+                                })()}
                             </>
                         )}
                         </div>

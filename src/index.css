@@ -632,3 +632,214 @@ select {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
+
+/* ─── Export Sub-Menus ─── */
+.export-menu-group .export-menu-trigger {
+  transition: background 0.15s;
+}
+
+.export-menu-group:hover .export-menu-trigger {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.export-submenu {
+  display: none;
+  position: absolute;
+  right: 100%;
+  top: 0;
+  margin-right: 2px;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  min-width: 80px;
+  z-index: 55;
+}
+
+.export-menu-group:hover .export-submenu {
+  display: block;
+}
+
+/* ─── Admin Availability Heatmap ─── */
+.avail-badge {
+  position: absolute;
+  bottom: 2px;
+  left: 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  line-height: 1.2;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.avail-badge-green {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.avail-badge-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.avail-badge-red {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+/* ─── Availability Matrix ─── */
+.avail-matrix-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.avail-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 600px;
+}
+
+.avail-matrix thead th {
+  position: sticky;
+  top: 0;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(8px);
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.avail-matrix thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  text-align: left;
+  min-width: 150px;
+}
+
+.avail-matrix tbody td {
+  padding: 0.5rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: middle;
+}
+
+.avail-matrix tbody td:first-child {
+  position: sticky;
+  left: 0;
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(8px);
+  text-align: left;
+  font-weight: 500;
+  color: var(--text-primary);
+  z-index: 1;
+  white-space: nowrap;
+}
+
+.avail-matrix tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.avail-matrix tbody tr:nth-child(even) td:first-child {
+  background: rgba(30, 41, 59, 0.98);
+}
+
+.avail-matrix tbody tr:hover td {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.avail-matrix tbody tr:hover td:first-child {
+  background: rgba(30, 41, 59, 1);
+}
+
+.avail-matrix tfoot td {
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  border-top: 2px solid rgba(255, 255, 255, 0.15);
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.avail-matrix tfoot td:first-child {
+  position: sticky;
+  left: 0;
+  background: rgba(30, 41, 59, 0.95);
+  text-align: left;
+}
+
+.avail-cell-available {
+  color: #34d399;
+  font-size: 1rem;
+}
+
+.avail-cell-unavailable {
+  color: #f87171;
+  font-size: 1rem;
+}
+
+/* ─── Team Availability Section (Session Modal) ─── */
+.team-avail-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.team-avail-section h4 {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #f8fafc;
+}
+
+.team-avail-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.team-avail-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.team-avail-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.team-avail-list li {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.team-avail-list li.unavailable {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+
+.team-avail-list li.available {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+}

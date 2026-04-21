@@ -111,12 +111,28 @@ const ADMIN_STEPS = [
         conditional: 'saveSchedule',
     },
     {
-        target: '#btn-export-csv',
+        target: '#btn-export',
         icon: '📊',
         title: 'Export Reports',
-        body: 'Export the schedule as CSV or PDF for printing, sharing in group chats, or archiving. Great for distributing the monthly schedule to the team.',
+        body: 'Click "Export" to open a menu with two options: Export Schedule and Export Availability. Hover over either to choose CSV or PDF format.',
         placement: 'bottom',
         conditional: 'scheduleExport',
+    },
+    {
+        target: '#btn-avail-matrix',
+        icon: '📋',
+        title: 'Availability Matrix',
+        body: 'Toggle this to switch between the calendar view and a detailed availability matrix. The matrix shows every member as a row and every session as a column, with ✓/✗ indicators so you can see who\'s available at a glance.',
+        placement: 'bottom',
+        conditional: 'scheduleRead',
+    },
+    {
+        target: '#calendar-grid',
+        icon: '🏷️',
+        title: 'Availability Badges & Heatmap',
+        body: 'Day cells now show colored badges (e.g. 10/12) indicating how many members are available. Green = all available, amber = 1-2 unavailable, red = 3+. You can toggle these on/off with the "Badges" button. Click any session to see the full team availability breakdown.',
+        placement: 'center',
+        conditional: 'scheduleRead',
     },
     {
         target: '#btn-export-ics',
@@ -198,10 +214,11 @@ const CalendarTour = ({ userId, isAdmin, googleConnected, permissions = {} }) =>
         isAssignmentsEdit = false,
         isTemplatesManage = false,
         isScheduleExport = false,
+        isScheduleRead = false,
     } = permissions;
 
     // Determine which tour variant to show
-    const hasAdminPerms = isAdmin || isScheduleGenerate || isAssignmentsEdit || isTemplatesManage || isScheduleExport;
+    const hasAdminPerms = isAdmin || isScheduleGenerate || isAssignmentsEdit || isTemplatesManage || isScheduleExport || isScheduleRead;
     const tourVariant = hasAdminPerms ? 'admin' : 'member';
     const baseSteps = hasAdminPerms ? ADMIN_STEPS : MEMBER_STEPS;
 
@@ -220,6 +237,7 @@ const CalendarTour = ({ userId, isAdmin, googleConnected, permissions = {} }) =>
         if (step.conditional === 'templatesManage' && !isTemplatesManage && !isAdmin) return false;
         if (step.conditional === 'saveSchedule' && !isAssignmentsEdit && !isScheduleGenerate && !isAdmin) return false;
         if (step.conditional === 'scheduleExport' && !isScheduleExport && !isAdmin) return false;
+        if (step.conditional === 'scheduleRead' && !isScheduleRead && !isAdmin) return false;
         return true;
     });
 

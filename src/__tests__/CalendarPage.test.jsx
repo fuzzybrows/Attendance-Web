@@ -122,7 +122,7 @@ describe('Calendar Page Integration Tests', () => {
         );
 
         expect(await screen.findByText(/Auto Generate Assignments/i)).toBeInTheDocument();
-        expect(screen.getByText(/Export CSV/i)).toBeInTheDocument();
+        expect(screen.getByText(/Export ▾/i)).toBeInTheDocument();
         expect(screen.getByTestId('mock-calendar')).toBeInTheDocument();
     });
 
