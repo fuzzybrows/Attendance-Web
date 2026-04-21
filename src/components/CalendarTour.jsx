@@ -218,7 +218,7 @@ const CalendarTour = ({ userId, isAdmin, googleConnected, permissions = {} }) =>
     } = permissions;
 
     // Determine which tour variant to show
-    const hasAdminPerms = isAdmin || isScheduleGenerate || isAssignmentsEdit || isTemplatesManage || isScheduleExport || isScheduleRead;
+    const hasAdminPerms = isAdmin || isScheduleGenerate || isAssignmentsEdit || isTemplatesManage || isScheduleExport;
     const tourVariant = hasAdminPerms ? 'admin' : 'member';
     const baseSteps = hasAdminPerms ? ADMIN_STEPS : MEMBER_STEPS;
 
